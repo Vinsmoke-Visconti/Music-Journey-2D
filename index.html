@@ -124,6 +124,38 @@
     }
     .top-selects select:hover { border-color: var(--accent); }
 
+    #auth-btn {
+      background: var(--accent);
+      border: none;
+      color: #000;
+      font-family: 'Outfit', sans-serif;
+      font-size: .82rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition);
+      margin-right: 10px;
+    }
+    #auth-btn:hover { background: #fff; transform: translateY(-1px); }
+    #auth-btn .user-email { color: #333; font-weight: normal; margin-right: 4px; }
+
+    #shop-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-family: 'Outfit', sans-serif;
+      font-size: .82rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition);
+      backdrop-filter: var(--blur);
+      margin-right: 8px;
+    }
+    #shop-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+
     /* ─────────────── DEBUG HUD (Góc trên phải) ─────────────── */
     #hud {
       position: absolute;
@@ -423,6 +455,8 @@
   <div id="top-bar">
     <div class="logo">🚐 MUSIC JOURNEY 2D</div>
     <div class="top-selects">
+      <button id="shop-btn">🛒 Shop</button>
+      <button id="auth-btn">Loading...</button>
       <select id="env-select" title="Chọn môi trường">
         <option value="beach">🏖️ Bãi biển</option>
         <option value="desert">🏜️ Sa mạc</option>

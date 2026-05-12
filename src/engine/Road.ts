@@ -1,95 +1,123 @@
 // ============================================================
-// Road.ts - Đường cong dạng sine (Perlin Noise sẽ thay thế ở GĐ3)
-// Music Journey 2D | Giai đoạn 2
+// Road.ts - Procedural Road with Perlin Noise (Giai đoạn 3)
+// Music Journey 2D | Infinite Terrain Generation
 // ============================================================
 
 import * as PIXI from 'pixi.js';
 
 export class Road {
+  private container: PIXI.Container;
   private gfx: PIXI.Graphics;
-  private markingGfx: PIXI.Graphics;
-  private screenH: number;
-  private screenW: number;
-  private noiseOffset: number = 0;
   private points: { x: number; y: number }[] = [];
+  private screenW = 0;
+  private screenH = 0;
+  private noiseOffset = 0;
 
-  private readonly GROUND_RATIO = 0.72; // Đường nằm ở 72% chiều cao
+  private readonly SEGMENT_WIDTH = 15; // Độ chi tiết của đường
+  private readonly GROUND_RATIO  = 0.75; // Vị trí mặt đất cơ bản (75% chiều cao màn hình)
+
+  // Perlin Noise 1D simple implementation
+  private seed = Math.random();
+  private noiseValues: number[] = [];
 
   constructor(app: PIXI.Application) {
+    this.container = new PIXI.Container();
     this.gfx = new PIXI.Graphics();
-    this.markingGfx = new PIXI.Graphics();
-    this.screenH = app.screen.height;
+    this.container.addChild(this.gfx);
+    app.stage.addChild(this.container);
+
     this.screenW = app.screen.width;
-    app.stage.addChild(this.gfx);
-    app.stage.addChild(this.markingGfx);
+    this.screenH = app.screen.height;
+
+    // Khởi tạo mảng noise ngẫu nhiên
+    for (let i = 0; i < 200; i++) {
+      this.noiseValues.push(Math.random());
+    }
   }
 
-  generatePoints(W: number, segments: number = 30): void {
+  /** Thuật toán Noise 1D mượt mà */
+  private getNoise(x: number): number {
+    const scaledX = x * 0.01;
+    const i = Math.floor(scaledX);
+    const f = scaledX - i;
+    
+    const noise1 = this.noiseValues[i % this.noiseValues.length];
+    const noise2 = this.noiseValues[(i + 1) % this.noiseValues.length];
+    
+    // Hàm nội suy mượt (Smoothstep)
+    const ft = f * Math.PI;
+    const f2 = (1 - Math.cos(ft)) * 0.5;
+    
+    return noise1 * (1 - f2) + noise2 * f2;
+  }
+
+  generatePoints(width: number): void {
     this.points = [];
-    for (let i = 0; i <= segments; i++) {
-      const x = (i / segments) * W;
-      // Sine wave đơn giản + harmonic nhỏ
-      const y = this.screenH * this.GROUND_RATIO
-        + Math.sin(i * 0.35 + this.noiseOffset) * 22
-        + Math.sin(i * 0.9 + this.noiseOffset * 1.4) * 8;
-      this.points.push({ x, y });
+    const count = Math.ceil(width / this.SEGMENT_WIDTH) + 5;
+    
+    for (let i = 0; i < count; i++) {
+      const x = i * this.SEGMENT_WIDTH;
+      // Kết hợp nhiều tầng noise (Octaves) để đường trông tự nhiên hơn
+      const n1 = this.getNoise(x + this.noiseOffset);
+      const n2 = this.getNoise((x + this.noiseOffset) * 2.5) * 0.4;
+      const n3 = this.getNoise((x + this.noiseOffset) * 0.5) * 2.0;
+      
+      const noiseY = (n1 + n2 + n3) * 45; // Biên độ gập ghềnh
+      
+      this.points.push({
+        x: x,
+        y: this.screenH * this.GROUND_RATIO + noiseY
+      });
     }
   }
 
-  draw(envId: string = 'beach'): void {
-    this.gfx.clear();
-    this.markingGfx.clear();
-    if (this.points.length < 2) return;
-
-    const roadColors: Record<string, [number, number, number]> = {
-      beach:  [0xd4b483, 0xb89460, 0xc8a870], // Cát
-      desert: [0xb87820, 0x9a6010, 0xaa7018], // Sỏi sa mạc
-      snow:   [0xd8e8f0, 0xb0c8d8, 0xc4d8e8], // Đường tuyết
-    };
-    const [roadMain, roadDark, roadMid] = roadColors[envId] ?? [0x888888, 0x666666, 0x777777];
-
-    const W = this.screenW;
-    const H = this.screenH;
-
-    // --- Mặt đường chính ---
-    this.gfx.beginFill(roadMain);
-    this.gfx.moveTo(this.points[0].x, this.points[0].y);
-    for (const p of this.points) this.gfx.lineTo(p.x, p.y);
-    this.gfx.lineTo(W, H);
-    this.gfx.lineTo(0, H);
-    this.gfx.closePath();
-    this.gfx.endFill();
-
-    // --- Viền mép đường (bóng) ---
-    this.gfx.lineStyle(4, roadDark, 0.8);
-    this.gfx.moveTo(this.points[0].x, this.points[0].y);
-    for (const p of this.points) this.gfx.lineTo(p.x, p.y);
-    this.gfx.lineStyle(0);
-
-    // --- Dải phân cách giữa đường (nét đứt vàng) ---
-    if (envId !== 'beach') {
-      this.markingGfx.lineStyle(3, 0xffee44, 0.7);
-      const midY = this.screenH * this.GROUND_RATIO + 18;
-      let dashOn = true;
-      for (let x = 0; x < W; x += 28) {
-        if (dashOn) {
-          this.markingGfx.moveTo(x, midY);
-          this.markingGfx.lineTo(x + 16, midY);
-        }
-        dashOn = !dashOn;
-      }
-      this.markingGfx.lineStyle(0);
-    }
-  }
-
-  update(speed: number, W: number, envId: string = 'beach'): void {
-    this.noiseOffset += speed * 0.007;
-    this.screenW = W;
-    this.generatePoints(W);
+  update(speed: number, width: number, envId: string): void {
+    // Tăng offset dựa trên tốc độ xe
+    this.noiseOffset += speed * 5;
+    
+    // Tạo lại các điểm dựa trên offset mới
+    this.generatePoints(width);
     this.draw(envId);
   }
 
+  draw(envId: string): void {
+    const g = this.gfx;
+    g.clear();
+
+    // Chọn màu đường dựa trên môi trường
+    let roadColor = 0x555555; // Mặc định: Nhựa đường
+    let lineColor = 0xfff176; // Mặc định: Vạch vàng
+
+    if (envId === 'desert') {
+      roadColor = 0xd4a373; 
+      lineColor = 0xfaedcd;
+    } else if (envId === 'snow') {
+      roadColor = 0xa2d2ff;
+      lineColor = 0xffffff;
+    }
+
+    // Vẽ phần dưới của mặt đất
+    g.beginFill(roadColor);
+    g.moveTo(0, this.screenH);
+    for (const p of this.points) {
+      g.lineTo(p.x, p.y);
+    }
+    g.lineTo(this.screenW, this.screenH);
+    g.endFill();
+
+    // Vẽ vạch kẻ đường (vạch đứt)
+    g.lineStyle(3, lineColor, 0.6);
+    for (let i = 0; i < this.points.length - 2; i += 4) {
+      const p = this.points[i];
+      const pNext = this.points[i + 1];
+      g.moveTo(p.x, p.y - 2);
+      g.lineTo(pNext.x, pNext.y - 2);
+    }
+    g.lineStyle(0);
+  }
+
   getGroundYAt(x: number): number {
+    // Tìm đoạn thẳng chứa x và nội suy y
     for (let i = 0; i < this.points.length - 1; i++) {
       const p1 = this.points[i];
       const p2 = this.points[i + 1];
@@ -101,8 +129,8 @@ export class Road {
     return this.screenH * this.GROUND_RATIO;
   }
 
-  resize(W: number, H: number): void {
-    this.screenW = W;
-    this.screenH = H;
+  resize(w: number, h: number): void {
+    this.screenW = w;
+    this.screenH = h;
   }
 }

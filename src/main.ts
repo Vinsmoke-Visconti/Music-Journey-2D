@@ -1,8 +1,3 @@
-// ============================================================
-// main.ts - Entry Point hoàn chỉnh | Giai đoạn 2 (Fixed)
-// Fixes: vehicle switching, window.__loadTrack, speedFactor, lock check
-// ============================================================
-
 import * as PIXI from 'pixi.js';
 import { Parallax }  from './engine/Parallax';
 import { Road }      from './engine/Road';
@@ -13,6 +8,14 @@ import { AudioSync } from './services/audioSync';
 import { getEnvironmentById } from './configs/environments';
 import { getVehicleById }     from './configs/vehicles';
 import { getSkyColor } from './utils/index';
+import { authUI } from './components/Auth';
+import { shopUI } from './components/Shop';
+import { supabase, getUserInventory, signOut } from './services/supabase';
+import { processDemoPurchase } from './services/payment';
+
+// ─── 0. Phase 4 State ─────────────────────────────────────────
+let currentUser: any = null;
+let userInventory: string[] = []; 
 
 // ─── 1. PixiJS ────────────────────────────────────────────────
 const app = new PIXI.Application({
@@ -155,13 +158,20 @@ vehicleSelect.addEventListener('change', () => {
   const newId  = vehicleSelect.value;
   const newCfg = getVehicleById(newId)!;
 
-  if (newCfg.isLocked) {
-    // Revert select to previous value
+  // Phase 4 Lock Check
+  const isUnlocked = !newCfg.isLocked || userInventory.includes(newId);
+
+  if (!isUnlocked) {
+    // Revert select
     vehicleSelect.value = currentVehicleId;
-    const priceStr = newCfg.price
-      ? `${(newCfg.price / 1000).toFixed(0)}k VNĐ`
-      : 'cần hội viên';
-    showToast(`🔒 ${newCfg.name} cần mua (${priceStr}) — Tính năng ở Giai đoạn 5`);
+    
+    if (!currentUser) {
+      showToast(`🔒 Vui lòng Đăng nhập để mở khóa ${newCfg.name}`);
+      authUI.show();
+    } else {
+      const priceStr = newCfg.price ? `${(newCfg.price / 1000).toFixed(0)}k VNĐ` : 'Premium';
+      showToast(`🔒 ${newCfg.name} là xe Premium (${priceStr}) — Cần mua tại Shop`);
+    }
     return;
   }
 
@@ -181,7 +191,68 @@ audioEl.addEventListener('ended', () => {
 audioEl.addEventListener('play',  () => albumArt?.classList.add('playing'));
 audioEl.addEventListener('pause', () => albumArt?.classList.remove('playing'));
 
+// --- Phase 4: Init Auth ---
+async function initAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+  currentUser = session?.user || null;
+  if (currentUser) {
+    const inv = await getUserInventory(currentUser.id);
+    userInventory = inv.map(item => item.item_id);
+    console.log('[Auth] Logged in:', currentUser.email, 'Items:', userInventory);
+  }
+  _updateAuthUI();
+}
+
+function _updateAuthUI() {
+  const authBtn = document.getElementById('auth-btn');
+  if (!authBtn) return;
+  if (currentUser) {
+    authBtn.innerHTML = `<span class="user-email">${currentUser.email.split('@')[0]}</span> (Logout)`;
+    authBtn.onclick = () => signOut();
+  } else {
+    authBtn.innerHTML = 'Login / Sign Up';
+    authBtn.onclick = () => authUI.show();
+  }
+}
+
+initAuth();
 loadTrack(0);
+
+// --- Phase 5: Shop Logic ---
+async function openShop() {
+  if (!currentUser) {
+    showToast('Vui lòng đăng nhập để mua sắm!');
+    authUI.show();
+    return;
+  }
+  
+  shopUI.show(userInventory, async (itemId) => {
+    const v = getVehicleById(itemId);
+    const e = getEnvironmentById(itemId);
+    const item = v || e;
+    if (!item) return;
+
+    showToast(`Đang xử lý mua ${item.name}...`);
+    const success = await processDemoPurchase({
+      userId: currentUser.id,
+      itemId: itemId,
+      itemType: v ? 'vehicle' : 'environment',
+      amount: (item as any).price || 0
+    });
+
+    if (success) {
+      showToast(`🎉 Đã mở khóa ${item.name}!`);
+      // Refresh inventory
+      const inv = await getUserInventory(currentUser.id);
+      userInventory = inv.map(i => i.item_id);
+    } else {
+      showToast(`❌ Lỗi khi mua vật phẩm.`);
+    }
+  });
+}
+
+const shopBtn = document.getElementById('shop-btn');
+if (shopBtn) shopBtn.onclick = () => openShop();
 
 // ─── 8. Visualizer ────────────────────────────────────────────
 function drawVisualizer(data: Uint8Array | null): void {
@@ -222,8 +293,8 @@ app.ticker.add(() => {
   vehicle.update(gYFront, gYRear, ad.bassEnergy, ad.trebleEnergy);
   const spd = vehicle.getSpeed();
 
-  // Parallax: apply environment speedFactor
-  parallax.update(spd * currentEnv.speedFactor);
+  // Parallax: apply environment speedFactor and song progress
+  parallax.update(spd * currentEnv.speedFactor, ad.progress);
   road.update(spd, app.screen.width, currentEnvId);
 
   // Particles
@@ -236,6 +307,8 @@ app.ticker.add(() => {
       particles.emitSmoke(ePos.x, ePos.y, spd);
     }
   }
+  // Atmospheric effects (Snow, Leaves, etc.)
+  particles.emitAtmosphere(app.screen.width, app.screen.height, currentEnvId);
   particles.update();
 
   // Camera shake on bass kick
