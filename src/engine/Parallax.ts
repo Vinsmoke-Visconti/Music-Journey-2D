@@ -1,0 +1,260 @@
+// ============================================================
+// Parallax.ts - Hệ thống nền nhiều lớp dùng PIXI.Graphics (không cần ảnh)
+// Music Journey 2D | Giai đoạn 2
+// ============================================================
+
+import * as PIXI from 'pixi.js';
+import type { Environment } from '../configs/environments';
+
+interface ColorLayer {
+  gfx: PIXI.Graphics;
+  scrollSpeed: number;
+  offsetX: number;
+  color: number;
+  y: number;
+  h: number;
+  shapes?: Array<{ x: number; y: number; w: number; h: number; color: number; alpha: number }>;
+}
+
+export class Parallax {
+  private app: PIXI.Application;
+  private layers: ColorLayer[] = [];
+  private skyGfx: PIXI.Graphics;
+  private groundGfx: PIXI.Graphics;
+  private currentEnv: Environment | null = null;
+
+  constructor(app: PIXI.Application) {
+    this.app = app;
+    this.skyGfx = new PIXI.Graphics();
+    this.groundGfx = new PIXI.Graphics();
+    app.stage.addChildAt(this.skyGfx, 0);
+    app.stage.addChildAt(this.groundGfx, 1);
+  }
+
+  loadEnvironment(env: Environment): void {
+    this.currentEnv = env;
+    // Xóa layers cũ
+    this.layers.forEach(l => this.app.stage.removeChild(l.gfx));
+    this.layers = [];
+
+    const W = this.app.screen.width;
+    const H = this.app.screen.height;
+
+    this._drawSkyGradient(env);
+
+    // Tạo layers theo môi trường
+    if (env.id === 'beach') {
+      this._buildBeachLayers(W, H);
+    } else if (env.id === 'desert') {
+      this._buildDesertLayers(W, H);
+    } else if (env.id === 'snow') {
+      this._buildSnowLayers(W, H);
+    }
+
+    // Thêm layers vào stage (sau skyGfx, trước road/vehicle)
+    this.layers.forEach((l, i) => {
+      this.app.stage.addChildAt(l.gfx, i + 2);
+    });
+
+    this._drawGround(env);
+  }
+
+  private _drawSkyGradient(env: Environment): void {
+    const g = this.skyGfx;
+    g.clear();
+    const W = this.app.screen.width;
+    const H = this.app.screen.height;
+
+    // Gradient bầu trời: vẽ nhiều dải màu từ trên xuống
+    const skyColors: Record<string, [number, number]> = {
+      beach:  [0x87ceeb, 0xfde5a7],
+      desert: [0xe07b39, 0xf5c97d],
+      snow:   [0x90e0ef, 0xb8d4e8],
+    };
+    const [top, bot] = skyColors[env.id] ?? [0x1a1a4e, 0x333366];
+
+    const steps = 12;
+    for (let i = 0; i < steps; i++) {
+      const t = i / steps;
+      const color = this._lerpColor(top, bot, t);
+      g.beginFill(color);
+      g.drawRect(0, (H * 0.72 * i) / steps, W, H * 0.72 / steps + 1);
+      g.endFill();
+    }
+  }
+
+  private _buildBeachLayers(W: number, H: number): void {
+    const groundY = H * 0.72;
+
+    // Layer 1: Mây xa (cuộn chậm)
+    const cloudGfx = new PIXI.Graphics();
+    const clouds = [
+      { x: 60, y: 40, w: 100, h: 28 },
+      { x: 250, y: 20, w: 140, h: 34 },
+      { x: 480, y: 55, w: 90, h: 22 },
+      { x: 700, y: 30, w: 120, h: 30 },
+      { x: 900, y: 60, w: 80, h: 20 },
+      { x: 1050, y: 18, w: 160, h: 36 },
+    ];
+    clouds.forEach(c => {
+      cloudGfx.beginFill(0xffffff, 0.85);
+      cloudGfx.drawEllipse(c.x, c.y, c.w / 2, c.h / 2);
+      cloudGfx.endFill();
+      cloudGfx.beginFill(0xffffff, 0.5);
+      cloudGfx.drawEllipse(c.x - c.w * 0.25, c.y + 5, c.w * 0.3, c.h * 0.45);
+      cloudGfx.drawEllipse(c.x + c.w * 0.2, c.y + 5, c.w * 0.35, c.h * 0.4);
+      cloudGfx.endFill();
+    });
+    this.layers.push({ gfx: cloudGfx, scrollSpeed: 0.3, offsetX: 0, color: 0, y: 0, h: 0 });
+
+    // Layer 2: Biển xa (cuộn vừa)
+    const seaGfx = new PIXI.Graphics();
+    seaGfx.beginFill(0x3a9bd5, 0.8);
+    seaGfx.drawRect(0, groundY - 80, W * 3, 80);
+    seaGfx.endFill();
+    // Sóng biển
+    for (let i = 0; i < 8; i++) {
+      seaGfx.beginFill(0x5ab4e8, 0.4);
+      seaGfx.drawEllipse(i * 180 + 80, groundY - 50, 90, 12);
+      seaGfx.endFill();
+    }
+    this.layers.push({ gfx: seaGfx, scrollSpeed: 0.5, offsetX: 0, color: 0, y: 0, h: 0 });
+
+    // Layer 3: Cây dừa (cuộn gần)
+    const palmGfx = new PIXI.Graphics();
+    const palmPositions = [120, 380, 650, 920, 1200];
+    palmPositions.forEach(px => {
+      // Thân cây
+      palmGfx.beginFill(0x8b6914);
+      palmGfx.drawRoundedRect(px - 8, groundY - 120, 16, 120, 4);
+      palmGfx.endFill();
+      // Tán lá
+      for (let leaf = 0; leaf < 6; leaf++) {
+        const angle = (leaf / 6) * Math.PI * 2;
+        palmGfx.lineStyle(5, 0x2d8a2d);
+        palmGfx.moveTo(px, groundY - 120);
+        palmGfx.lineTo(
+          px + Math.cos(angle) * 55,
+          groundY - 120 + Math.sin(angle) * 30 - 20
+        );
+      }
+      palmGfx.lineStyle(0);
+    });
+    this.layers.push({ gfx: palmGfx, scrollSpeed: 0.75, offsetX: 0, color: 0, y: 0, h: 0 });
+  }
+
+  private _buildDesertLayers(W: number, H: number): void {
+    const groundY = H * 0.72;
+
+    // Mây bụi
+    const dustGfx = new PIXI.Graphics();
+    [80, 300, 600, 900, 1150].forEach(x => {
+      dustGfx.beginFill(0xd4a855, 0.2);
+      dustGfx.drawEllipse(x, 60, 100, 20);
+      dustGfx.endFill();
+    });
+    this.layers.push({ gfx: dustGfx, scrollSpeed: 0.2, offsetX: 0, color: 0, y: 0, h: 0 });
+
+    // Đồi cát
+    const duneGfx = new PIXI.Graphics();
+    duneGfx.beginFill(0xc4922a);
+    for (let i = 0; i < 6; i++) {
+      duneGfx.drawEllipse(i * 250 + 100, groundY - 30, 180, 50);
+    }
+    duneGfx.endFill();
+    this.layers.push({ gfx: duneGfx, scrollSpeed: 0.5, offsetX: 0, color: 0, y: 0, h: 0 });
+
+    // Xương rồng
+    const cactusGfx = new PIXI.Graphics();
+    [150, 450, 750, 1050].forEach(cx => {
+      cactusGfx.beginFill(0x3a7d44);
+      cactusGfx.drawRoundedRect(cx - 7, groundY - 90, 14, 90, 5);
+      cactusGfx.drawRoundedRect(cx - 22, groundY - 60, 16, 8, 3);
+      cactusGfx.drawRoundedRect(cx + 6, groundY - 70, 16, 8, 3);
+      cactusGfx.endFill();
+    });
+    this.layers.push({ gfx: cactusGfx, scrollSpeed: 0.8, offsetX: 0, color: 0, y: 0, h: 0 });
+  }
+
+  private _buildSnowLayers(W: number, H: number): void {
+    const groundY = H * 0.72;
+
+    // Núi xa
+    const mountainGfx = new PIXI.Graphics();
+    mountainGfx.beginFill(0x8aafc0);
+    [[100, 200], [350, 250], [600, 180], [850, 220], [1100, 200]].forEach(([mx, mh]) => {
+      mountainGfx.drawPolygon([mx - 120, groundY - 20, mx, groundY - mh, mx + 120, groundY - 20]);
+    });
+    mountainGfx.endFill();
+    // Tuyết đỉnh núi
+    mountainGfx.beginFill(0xffffff, 0.9);
+    [[100, 200], [350, 250], [600, 180], [850, 220], [1100, 200]].forEach(([mx, mh]) => {
+      mountainGfx.drawPolygon([mx - 40, groundY - mh + 60, mx, groundY - mh, mx + 40, groundY - mh + 60]);
+    });
+    mountainGfx.endFill();
+    this.layers.push({ gfx: mountainGfx, scrollSpeed: 0.25, offsetX: 0, color: 0, y: 0, h: 0 });
+
+    // Cây thông
+    const treeGfx = new PIXI.Graphics();
+    [80, 250, 450, 680, 900, 1120].forEach(tx => {
+      treeGfx.beginFill(0x2d5a27);
+      treeGfx.drawPolygon([tx, groundY - 80, tx - 30, groundY - 20, tx + 30, groundY - 20]);
+      treeGfx.drawPolygon([tx, groundY - 100, tx - 22, groundY - 50, tx + 22, groundY - 50]);
+      treeGfx.endFill();
+      treeGfx.beginFill(0x5c3d1e);
+      treeGfx.drawRect(tx - 5, groundY - 20, 10, 20);
+      treeGfx.endFill();
+      // Tuyết trên cây
+      treeGfx.beginFill(0xffffff, 0.7);
+      treeGfx.drawEllipse(tx, groundY - 95, 15, 6);
+      treeGfx.endFill();
+    });
+    this.layers.push({ gfx: treeGfx, scrollSpeed: 0.7, offsetX: 0, color: 0, y: 0, h: 0 });
+  }
+
+  private _drawGround(env: Environment): void {
+    const g = this.groundGfx;
+    g.clear();
+    const W = this.app.screen.width;
+    const H = this.app.screen.height;
+    const groundY = H * 0.72;
+
+    const groundColors: Record<string, [number, number]> = {
+      beach:  [0xf5d17a, 0xe8b84b],
+      desert: [0xd4922a, 0xb87820],
+      snow:   [0xe8f4f8, 0xc8dce8],
+    };
+    const [gTop, gBot] = groundColors[env.id] ?? [0x4a7c3f, 0x2d5a2a];
+    const steps = 6;
+    for (let i = 0; i < steps; i++) {
+      const t = i / steps;
+      g.beginFill(this._lerpColor(gTop, gBot, t));
+      g.drawRect(0, groundY + (H - groundY) * i / steps, W, (H - groundY) / steps + 1);
+      g.endFill();
+    }
+  }
+
+  // Cập nhật mỗi frame
+  update(vehicleSpeed: number): void {
+    const W = this.app.screen.width;
+    this.layers.forEach(layer => {
+      layer.offsetX -= vehicleSpeed * layer.scrollSpeed;
+      // Wrap quanh màn hình (tiling thủ công)
+      if (layer.offsetX < -W * 1.5) layer.offsetX += W * 1.5;
+      layer.gfx.x = layer.offsetX;
+    });
+  }
+
+  resize(env: Environment): void {
+    this.loadEnvironment(env);
+  }
+
+  private _lerpColor(a: number, b: number, t: number): number {
+    const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+    const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+    const rr = Math.round(ar + (br - ar) * t);
+    const rg = Math.round(ag + (bg - ag) * t);
+    const rb = Math.round(ab + (bb - ab) * t);
+    return (rr << 16) | (rg << 8) | rb;
+  }
+}

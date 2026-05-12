@@ -1,0 +1,24 @@
+{
+  "name": "music-journey-2d",
+  "version": "0.1.0",
+  "description": "Music Journey 2D - Trình phát nhạc với xe di chuyển theo nhịp âm thanh (PixiJS + Vite + TypeScript)",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "pixi.js": "^7.4.2",
+    "gsap": "^3.12.5",
+    "@supabase/supabase-js": "^2.43.5",
+    "simplex-noise": "^4.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "@types/node": "^20.12.12",
+    "eslint": "^9.2.0"
+  }
+}
