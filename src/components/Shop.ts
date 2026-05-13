@@ -91,7 +91,10 @@ export class ShopUI {
       const isFree = (item as any).isLocked === false || item.id === 'beach';
       const isOwned = isFree || userInventory.includes(item.id);
       const icon = item.type === 'vehicle' ? '🏎️' : '🏞️';
-      const priceText = item.price ? `${item.price.toLocaleString('vi-VN')}đ` : 'Miễn phí';
+      const price = item.price;
+      const priceText = (price !== null && price !== undefined) 
+        ? `${price.toLocaleString('vi-VN')}đ` 
+        : 'Miễn phí';
 
       gridHTML += `
         <div class="shop-card">

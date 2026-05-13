@@ -143,14 +143,30 @@ progressBar.addEventListener('click', (e) => {
   audioEl.currentTime = ratio * audioEl.duration;
 });
 
-// Environment change: reload parallax + apply audio filter
+// Environment change: check lock, reload parallax + apply audio filter
 envSelect.addEventListener('change', () => {
-  currentEnvId = envSelect.value;
-  currentEnv   = getEnvironmentById(currentEnvId)!;
+  const newId  = envSelect.value;
+  const newCfg = getEnvironmentById(newId)!;
+
+  // Phase 5 Lock Check for Environment
+  const isUnlocked = !newCfg.isLocked || userInventory.includes(newId);
+
+  if (!isUnlocked) {
+    envSelect.value = currentEnvId;
+    if (!currentUser) {
+      showToast(`🔒 Vui lòng Đăng nhập để mở khóa ${newCfg.name}`);
+      authUI.show();
+    } else {
+      showToast(`🔒 ${newCfg.name} là môi trường Premium!`);
+    }
+    return;
+  }
+
+  currentEnvId = newId;
+  currentEnv   = newCfg;
   parallax.loadEnvironment(currentEnv);
   particles.setDustColor(currentEnv.particleColor);
   road.draw(currentEnvId);
-  // Apply environmental lowpass filter
   if (audio.isConnected()) {
     audio.setLowpass(currentEnv.audioFilters.lowpass);
   }
