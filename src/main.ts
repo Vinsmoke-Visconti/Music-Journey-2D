@@ -278,24 +278,32 @@ function updateSelectUI() {
   const eSelect = document.getElementById('env-select') as HTMLSelectElement;
 
   if (vSelect) {
+    const vIcons: Record<string, string> = { van: '🚐', jeep: '🚙', pickup: '🛻' };
     Array.from(vSelect.options).forEach(opt => {
       const id = opt.value;
       const v = getVehicleById(id);
       if (v && (!v.isLocked || userInventory.includes(id))) {
-        // Gỡ bỏ ổ khóa và giá tiền, chỉ giữ lại tên
         opt.textContent = opt.textContent!.replace('🔒 ', '').split(' – ')[0];
-        if (id !== 'van') opt.textContent = '✅ ' + opt.textContent;
+        const icon = vIcons[id] || '✅';
+        // Tránh lặp lại icon nếu đã có
+        if (!opt.textContent.includes(icon)) {
+           opt.textContent = icon + ' ' + opt.textContent.replace('🚐 ', '');
+        }
       }
     });
   }
 
   if (eSelect) {
+    const eIcons: Record<string, string> = { beach: '🏖️', desert: '🏜️', snow: '🏔️' };
     Array.from(eSelect.options).forEach(opt => {
       const id = opt.value;
       const e = getEnvironmentById(id);
       if (e && (!e.isLocked || userInventory.includes(id))) {
         opt.textContent = opt.textContent!.replace('🔒 ', '').split(' – ')[0];
-        if (id !== 'beach') opt.textContent = '✅ ' + opt.textContent;
+        const icon = eIcons[id] || '✅';
+        if (!opt.textContent.includes(icon)) {
+          opt.textContent = icon + ' ' + opt.textContent.replace('🏖️ ', '');
+        }
       }
     });
   }
