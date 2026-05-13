@@ -218,6 +218,7 @@ async function initAuth() {
     const inv = await getUserInventory(currentUser.id);
     userInventory = inv.map(item => item.item_id);
     console.log('[Auth] Logged in:', currentUser.email, 'Items:', userInventory);
+    updateSelectUI();
   }
   _updateAuthUI();
 }
@@ -264,10 +265,40 @@ async function openShop() {
       // Refresh inventory
       const inv = await getUserInventory(currentUser.id);
       userInventory = inv.map(i => i.item_id);
+      updateSelectUI(); // <-- Cập nhật lại giao diện nút chọn
     } else {
       showToast(`❌ Lỗi khi mua vật phẩm.`);
     }
   });
+}
+
+// --- Dynamic UI Update for Selects ---
+function updateSelectUI() {
+  const vSelect = document.getElementById('vehicle-select') as HTMLSelectElement;
+  const eSelect = document.getElementById('env-select') as HTMLSelectElement;
+
+  if (vSelect) {
+    Array.from(vSelect.options).forEach(opt => {
+      const id = opt.value;
+      const v = getVehicleById(id);
+      if (v && (!v.isLocked || userInventory.includes(id))) {
+        // Gỡ bỏ ổ khóa và giá tiền, chỉ giữ lại tên
+        opt.textContent = opt.textContent!.replace('🔒 ', '').split(' – ')[0];
+        if (id !== 'van') opt.textContent = '✅ ' + opt.textContent;
+      }
+    });
+  }
+
+  if (eSelect) {
+    Array.from(eSelect.options).forEach(opt => {
+      const id = opt.value;
+      const e = getEnvironmentById(id);
+      if (e && (!e.isLocked || userInventory.includes(id))) {
+        opt.textContent = opt.textContent!.replace('🔒 ', '').split(' – ')[0];
+        if (id !== 'beach') opt.textContent = '✅ ' + opt.textContent;
+      }
+    });
+  }
 }
 
 const shopBtn = document.getElementById('shop-btn');
