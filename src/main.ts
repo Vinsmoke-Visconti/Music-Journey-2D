@@ -1,3 +1,6 @@
+import { injectSpeedInsights } from '@vercel/speed-insights';
+injectSpeedInsights();
+
 import * as PIXI from 'pixi.js';
 import { Parallax }  from './engine/Parallax';
 import { Road }      from './engine/Road';
