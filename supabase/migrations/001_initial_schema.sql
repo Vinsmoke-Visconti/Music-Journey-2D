@@ -30,8 +30,7 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
   user_id     UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   plan        TEXT CHECK (plan IN ('1month', '3month', '6month')) NOT NULL,
   started_at  TIMESTAMPTZ DEFAULT NOW(),
-  expires_at  TIMESTAMPTZ NOT NULL,
-  is_active   BOOLEAN GENERATED ALWAYS AS (expires_at > NOW()) STORED
+  expires_at  TIMESTAMPTZ NOT NULL
 );
 
 -- Bảng: purchases (lịch sử giao dịch)

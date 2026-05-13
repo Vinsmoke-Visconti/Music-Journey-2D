@@ -22,6 +22,16 @@ export class Parallax {
   private skyGfx: PIXI.Graphics;
   private groundGfx: PIXI.Graphics;
   private currentEnv: Environment | null = null;
+  private currentProgress: number = 0;
+
+  // Cấu hình màu bầu trời theo thời gian (Progress 0 -> 1)
+  private readonly TIME_COLORS = [
+    { p: 0.0, top: 0x1a1a4e, bot: 0x333366 }, // Đêm (Bắt đầu)
+    { p: 0.2, top: 0x87ceeb, bot: 0xfde5a7 }, // Bình minh
+    { p: 0.5, top: 0x00b4d8, bot: 0x90e0ef }, // Trưa
+    { p: 0.8, top: 0xe07b39, bot: 0xf5c97d }, // Hoàng hôn
+    { p: 1.0, top: 0x1a1a4e, bot: 0x333366 }, // Đêm (Kết thúc)
+  ];
 
   constructor(app: PIXI.Application) {
     this.app = app;
@@ -40,7 +50,7 @@ export class Parallax {
     const W = this.app.screen.width;
     const H = this.app.screen.height;
 
-    this._drawSkyGradient(env);
+    this._drawSkyGradient();
 
     // Tạo layers theo môi trường
     if (env.id === 'beach') {
@@ -59,24 +69,33 @@ export class Parallax {
     this._drawGround(env);
   }
 
-  private _drawSkyGradient(env: Environment): void {
+  private _drawSkyGradient(): void {
+    if (!this.currentEnv) return;
     const g = this.skyGfx;
     g.clear();
     const W = this.app.screen.width;
     const H = this.app.screen.height;
 
-    // Gradient bầu trời: vẽ nhiều dải màu từ trên xuống
-    const skyColors: Record<string, [number, number]> = {
-      beach:  [0x87ceeb, 0xfde5a7],
-      desert: [0xe07b39, 0xf5c97d],
-      snow:   [0x90e0ef, 0xb8d4e8],
-    };
-    const [top, bot] = skyColors[env.id] ?? [0x1a1a4e, 0x333366];
+    // Tìm 2 mốc thời gian gần nhất để nội suy
+    let startIdx = 0;
+    for (let i = 0; i < this.TIME_COLORS.length - 1; i++) {
+      if (this.currentProgress >= this.TIME_COLORS[i].p && this.currentProgress <= this.TIME_COLORS[i + 1].p) {
+        startIdx = i;
+        break;
+      }
+    }
+
+    const c1 = this.TIME_COLORS[startIdx];
+    const c2 = this.TIME_COLORS[startIdx + 1];
+    const t = (this.currentProgress - c1.p) / (c2.p - c1.p);
+
+    const top = this._lerpColor(c1.top, c2.top, t);
+    const bot = this._lerpColor(c1.bot, c2.bot, t);
 
     const steps = 12;
     for (let i = 0; i < steps; i++) {
-      const t = i / steps;
-      const color = this._lerpColor(top, bot, t);
+      const stepT = i / steps;
+      const color = this._lerpColor(top, bot, stepT);
       g.beginFill(color);
       g.drawRect(0, (H * 0.72 * i) / steps, W, H * 0.72 / steps + 1);
       g.endFill();
@@ -235,13 +254,21 @@ export class Parallax {
   }
 
   // Cập nhật mỗi frame
-  update(vehicleSpeed: number): void {
+  update(vehicleSpeed: number, progress: number = 0): void {
+    this.currentProgress = progress;
     const W = this.app.screen.width;
+    
+    // Cập nhật bầu trời theo thời gian
+    this._drawSkyGradient();
+
     this.layers.forEach(layer => {
       layer.offsetX -= vehicleSpeed * layer.scrollSpeed;
-      // Wrap quanh màn hình (tiling thủ công)
       if (layer.offsetX < -W * 1.5) layer.offsetX += W * 1.5;
       layer.gfx.x = layer.offsetX;
+      
+      // Độ sáng của vật thể (núi, cây) giảm xuống khi về đêm
+      const nightFactor = Math.cos((this.currentProgress - 0.5) * Math.PI * 2) * 0.5 + 0.5;
+      layer.gfx.alpha = 0.4 + nightFactor * 0.6;
     });
   }
 

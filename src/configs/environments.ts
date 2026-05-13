@@ -24,6 +24,8 @@ export interface Environment {
     src: string;
     scrollSpeed: number; // 0.0 - 1.0, lớp xa = chậm hơn
   }>;
+  isLocked: boolean;
+  price: number | null;
 }
 
 export const environments: Environment[] = [
@@ -50,6 +52,8 @@ export const environments: Environment[] = [
       { src: 'backgrounds/beach_layer_sea.png', scrollSpeed: 0.6 },
       { src: 'backgrounds/beach_layer_ground.png', scrollSpeed: 1.0 },
     ],
+    isLocked: false,
+    price: null,
   },
   {
     id: 'desert',
@@ -73,6 +77,8 @@ export const environments: Environment[] = [
       { src: 'backgrounds/desert_layer_dunes.png', scrollSpeed: 0.5 },
       { src: 'backgrounds/desert_layer_ground.png', scrollSpeed: 1.0 },
     ],
+    isLocked: true,
+    price: 29000,
   },
   {
     id: 'snow',
@@ -97,6 +103,8 @@ export const environments: Environment[] = [
       { src: 'backgrounds/snow_layer_trees.png', scrollSpeed: 0.7 },
       { src: 'backgrounds/snow_layer_ground.png', scrollSpeed: 1.0 },
     ],
+    isLocked: true,
+    price: 35000,
   },
 ];
 
