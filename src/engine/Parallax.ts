@@ -107,32 +107,27 @@ export class Parallax {
 
     // Layer 1: Mây xa (cuộn chậm)
     const cloudGfx = new PIXI.Graphics();
-    const clouds = [
-      { x: 60, y: 40, w: 100, h: 28 },
-      { x: 250, y: 20, w: 140, h: 34 },
-      { x: 480, y: 55, w: 90, h: 22 },
-      { x: 700, y: 30, w: 120, h: 30 },
-      { x: 900, y: 60, w: 80, h: 20 },
-      { x: 1050, y: 18, w: 160, h: 36 },
-    ];
-    clouds.forEach(c => {
+    for (let cx = 60; cx < 4000; cx += 220 + Math.random() * 100) {
+      const cy = 20 + Math.random() * 40;
+      const cw = 80 + Math.random() * 60;
+      const ch = 20 + Math.random() * 16;
       cloudGfx.beginFill(0xffffff, 0.85);
-      cloudGfx.drawEllipse(c.x, c.y, c.w / 2, c.h / 2);
+      cloudGfx.drawEllipse(cx, cy, cw / 2, ch / 2);
       cloudGfx.endFill();
       cloudGfx.beginFill(0xffffff, 0.5);
-      cloudGfx.drawEllipse(c.x - c.w * 0.25, c.y + 5, c.w * 0.3, c.h * 0.45);
-      cloudGfx.drawEllipse(c.x + c.w * 0.2, c.y + 5, c.w * 0.35, c.h * 0.4);
+      cloudGfx.drawEllipse(cx - cw * 0.25, cy + 5, cw * 0.3, ch * 0.45);
+      cloudGfx.drawEllipse(cx + cw * 0.2, cy + 5, cw * 0.35, ch * 0.4);
       cloudGfx.endFill();
-    });
+    }
     this.layers.push({ gfx: cloudGfx, scrollSpeed: 0.3, offsetX: 0, color: 0, y: 0, h: 0 });
 
     // Layer 2: Biển xa (cuộn vừa)
     const seaGfx = new PIXI.Graphics();
     seaGfx.beginFill(0x3a9bd5, 0.8);
-    seaGfx.drawRect(0, groundY - 80, W * 3, 80);
+    seaGfx.drawRect(0, groundY - 80, 4000, 80);
     seaGfx.endFill();
     // Sóng biển
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 22; i++) {
       seaGfx.beginFill(0x5ab4e8, 0.4);
       seaGfx.drawEllipse(i * 180 + 80, groundY - 50, 90, 12);
       seaGfx.endFill();
@@ -141,8 +136,7 @@ export class Parallax {
 
     // Layer 3: Cây dừa (cuộn gần)
     const palmGfx = new PIXI.Graphics();
-    const palmPositions = [120, 380, 650, 920, 1200];
-    palmPositions.forEach(px => {
+    for (let px = 120; px < 4000; px += 250 + Math.random() * 100) {
       // Thân cây
       palmGfx.beginFill(0x8b6914);
       palmGfx.drawRoundedRect(px - 8, groundY - 120, 16, 120, 4);
@@ -158,7 +152,7 @@ export class Parallax {
         );
       }
       palmGfx.lineStyle(0);
-    });
+    }
     this.layers.push({ gfx: palmGfx, scrollSpeed: 0.75, offsetX: 0, color: 0, y: 0, h: 0 });
   }
 
@@ -167,17 +161,17 @@ export class Parallax {
 
     // Mây bụi
     const dustGfx = new PIXI.Graphics();
-    [80, 300, 600, 900, 1150].forEach(x => {
+    for (let x = 80; x < 4000; x += 250 + Math.random() * 150) {
       dustGfx.beginFill(0xd4a855, 0.2);
-      dustGfx.drawEllipse(x, 60, 100, 20);
+      dustGfx.drawEllipse(x, 60 + Math.random() * 20, 100, 20);
       dustGfx.endFill();
-    });
+    }
     this.layers.push({ gfx: dustGfx, scrollSpeed: 0.2, offsetX: 0, color: 0, y: 0, h: 0 });
 
     // Đồi cát
     const duneGfx = new PIXI.Graphics();
     duneGfx.beginFill(0xc4922a);
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 16; i++) {
       duneGfx.drawEllipse(i * 250 + 100, groundY - 30, 180, 50);
     }
     duneGfx.endFill();
@@ -185,13 +179,13 @@ export class Parallax {
 
     // Xương rồng
     const cactusGfx = new PIXI.Graphics();
-    [150, 450, 750, 1050].forEach(cx => {
+    for (let cx = 150; cx < 4000; cx += 300 + Math.random() * 100) {
       cactusGfx.beginFill(0x3a7d44);
       cactusGfx.drawRoundedRect(cx - 7, groundY - 90, 14, 90, 5);
       cactusGfx.drawRoundedRect(cx - 22, groundY - 60, 16, 8, 3);
       cactusGfx.drawRoundedRect(cx + 6, groundY - 70, 16, 8, 3);
       cactusGfx.endFill();
-    });
+    }
     this.layers.push({ gfx: cactusGfx, scrollSpeed: 0.8, offsetX: 0, color: 0, y: 0, h: 0 });
   }
 
@@ -201,21 +195,39 @@ export class Parallax {
     // Núi xa
     const mountainGfx = new PIXI.Graphics();
     mountainGfx.beginFill(0x8aafc0);
-    [[100, 200], [350, 250], [600, 180], [850, 220], [1100, 200]].forEach(([mx, mh]) => {
+    for (let mx = 100; mx < 4000; mx += 250) {
+      const mh = 180 + Math.random() * 70;
       mountainGfx.drawPolygon([mx - 120, groundY - 20, mx, groundY - mh, mx + 120, groundY - 20]);
-    });
+    }
     mountainGfx.endFill();
     // Tuyết đỉnh núi
     mountainGfx.beginFill(0xffffff, 0.9);
-    [[100, 200], [350, 250], [600, 180], [850, 220], [1100, 200]].forEach(([mx, mh]) => {
-      mountainGfx.drawPolygon([mx - 40, groundY - mh + 60, mx, groundY - mh, mx + 40, groundY - mh + 60]);
+    for (let mx = 100; mx < 4000; mx += 250) {
+      const mh = 180 + Math.random() * 70; // (Approx same random sequence if seeded, but it's okay for visual effect to just overlap snow roughly, wait actually the random height won't match the mountain height!)
+    }
+    // Let's use a deterministic approach instead of random inside the loop for snow to match mountain height
+    // Hoặc lưu vào array
+    const mountains: {x: number, h: number}[] = [];
+    for (let mx = 100; mx < 4000; mx += 250) {
+      mountains.push({ x: mx, h: 180 + Math.random() * 70 });
+    }
+    mountainGfx.clear();
+    mountainGfx.beginFill(0x8aafc0);
+    mountains.forEach(m => {
+      mountainGfx.drawPolygon([m.x - 120, groundY - 20, m.x, groundY - m.h, m.x + 120, groundY - 20]);
+    });
+    mountainGfx.endFill();
+    
+    mountainGfx.beginFill(0xffffff, 0.9);
+    mountains.forEach(m => {
+      mountainGfx.drawPolygon([m.x - 40, groundY - m.h + 60, m.x, groundY - m.h, m.x + 40, groundY - m.h + 60]);
     });
     mountainGfx.endFill();
     this.layers.push({ gfx: mountainGfx, scrollSpeed: 0.25, offsetX: 0, color: 0, y: 0, h: 0 });
 
     // Cây thông
     const treeGfx = new PIXI.Graphics();
-    [80, 250, 450, 680, 900, 1120].forEach(tx => {
+    for (let tx = 80; tx < 4000; tx += 200 + Math.random() * 80) {
       treeGfx.beginFill(0x2d5a27);
       treeGfx.drawPolygon([tx, groundY - 80, tx - 30, groundY - 20, tx + 30, groundY - 20]);
       treeGfx.drawPolygon([tx, groundY - 100, tx - 22, groundY - 50, tx + 22, groundY - 50]);
@@ -227,7 +239,7 @@ export class Parallax {
       treeGfx.beginFill(0xffffff, 0.7);
       treeGfx.drawEllipse(tx, groundY - 95, 15, 6);
       treeGfx.endFill();
-    });
+    }
     this.layers.push({ gfx: treeGfx, scrollSpeed: 0.7, offsetX: 0, color: 0, y: 0, h: 0 });
   }
 

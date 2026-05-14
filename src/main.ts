@@ -73,9 +73,9 @@ const albumArt      = document.getElementById('album-art')      as HTMLDivElemen
 
 // ─── 5. Playlist ──────────────────────────────────────────────
 const PLAYLIST = [
-  { name: '🎵 Lofi Chill Ride',  src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
-  { name: '🚗 Road Trip Beats',  src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
-  { name: '🌅 Sunset Drive',     src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' },
+  { name: '🎵 Viper Beat (Fast Load)', src: 'https://raw.githubusercontent.com/mdn/webaudio-examples/main/audio-analyser/viper.mp3' },
+  { name: '🚗 Road Trip (SoundHelix)', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+  { name: '🌅 Sunset Drive (SoundHelix)', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
 ];
 let trackIndex = 0;
 

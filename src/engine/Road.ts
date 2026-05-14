@@ -14,7 +14,7 @@ export class Road {
   private noiseOffset = 0;
 
   private readonly SEGMENT_WIDTH = 15; // Độ chi tiết của đường
-  private readonly GROUND_RATIO  = 0.75; // Vị trí mặt đất cơ bản (75% chiều cao màn hình)
+  private readonly GROUND_RATIO  = 0.65; // Vị trí mặt đất cơ bản (65% chiều cao màn hình)
 
   // Perlin Noise 1D simple implementation
   private seed = Math.random();
@@ -62,7 +62,7 @@ export class Road {
       const n2 = this.getNoise((x + this.noiseOffset) * 2.5) * 0.4;
       const n3 = this.getNoise((x + this.noiseOffset) * 0.5) * 2.0;
       
-      const noiseY = (n1 + n2 + n3) * 45; // Biên độ gập ghềnh
+      const noiseY = (n1 + n2 + n3) * 15; // Biên độ gập ghềnh giảm xuống cho mượt hơn
       
       this.points.push({
         x: x,

@@ -155,24 +155,24 @@ export class Vehicle {
     g.beginFill(JEEP_COLORS.body); g.drawRoundedRect(-W / 2, -H, W, H, 4); g.endFill();
     g.beginFill(JEEP_COLORS.bodyAccent, 0.5); g.drawRoundedRect(-W / 2, -H / 2, W, H / 2, 4); g.endFill();
     // Flat roof
-    g.beginFill(JEEP_COLORS.roof); g.drawRect(-W / 2 + 6, -H - 30, W - 12, 32); g.endFill();
+    g.beginFill(JEEP_COLORS.roof); g.drawRect(-W / 2 + 6, -H, W - 12, 32); g.endFill();
     // Roof rack rails
     g.lineStyle(3, JEEP_COLORS.roofRack, 0.9);
-    g.moveTo(-W / 2 + 10, -H - 28); g.lineTo(W / 2 - 10, -H - 28);
-    g.moveTo(-W / 2 + 10, -H - 24); g.lineTo(W / 2 - 10, -H - 24);
+    g.moveTo(-W / 2 + 10, -H + 2); g.lineTo(W / 2 - 10, -H + 2);
+    g.moveTo(-W / 2 + 10, -H + 6); g.lineTo(W / 2 - 10, -H + 6);
     for (let cx = -W / 2 + 22; cx < W / 2 - 10; cx += 24) {
-      g.moveTo(cx, -H - 29); g.lineTo(cx, -H - 23);
+      g.moveTo(cx, -H + 1); g.lineTo(cx, -H + 7);
     }
     g.lineStyle(0);
 
     // Windshield (upright)
-    g.beginFill(JEEP_COLORS.windowFrame); g.drawRect(W / 2 - 48, -H - 28, 42, 30); g.endFill();
-    g.beginFill(JEEP_COLORS.window, 0.8); g.drawRect(W / 2 - 46, -H - 26, 38, 26); g.endFill();
-    g.beginFill(0xffffff, 0.15); g.drawRect(W / 2 - 45, -H - 25, 10, 12); g.endFill();
+    g.beginFill(JEEP_COLORS.windowFrame); g.drawRect(W / 2 - 48, -H + 2, 42, 30); g.endFill();
+    g.beginFill(JEEP_COLORS.window, 0.8); g.drawRect(W / 2 - 46, -H + 4, 38, 26); g.endFill();
+    g.beginFill(0xffffff, 0.15); g.drawRect(W / 2 - 45, -H + 5, 10, 12); g.endFill();
     // Side window
-    g.beginFill(JEEP_COLORS.windowFrame); g.drawRect(-W / 2 + 10, -H - 28, 52, 30); g.endFill();
-    g.beginFill(JEEP_COLORS.window, 0.75); g.drawRect(-W / 2 + 12, -H - 26, 48, 26); g.endFill();
-    g.beginFill(0xffffff, 0.12); g.drawRect(-W / 2 + 14, -H - 25, 12, 11); g.endFill();
+    g.beginFill(JEEP_COLORS.windowFrame); g.drawRect(-W / 2 + 10, -H + 2, 52, 30); g.endFill();
+    g.beginFill(JEEP_COLORS.window, 0.75); g.drawRect(-W / 2 + 12, -H + 4, 48, 26); g.endFill();
+    g.beginFill(0xffffff, 0.12); g.drawRect(-W / 2 + 14, -H + 5, 12, 11); g.endFill();
 
     // Front grille
     g.beginFill(0x1a1a1a); g.drawRoundedRect(W / 2 - 6, -H + 4, 12, 22, 2); g.endFill();
@@ -227,18 +227,18 @@ export class Vehicle {
     g.beginFill(PICKUP_COLORS.bodyAccent, 0.45); g.drawRoundedRect(cabX, -H / 2, cabW, H / 2, 5); g.endFill();
     // Cab roof (slight slope)
     g.beginFill(PICKUP_COLORS.roof);
-    g.moveTo(cabX + 5, -H - 26); g.lineTo(cabX + cabW - 8, -H - 26);
-    g.lineTo(cabX + cabW - 2, -H); g.lineTo(cabX, -H);
+    g.moveTo(cabX + 5, -H); g.lineTo(cabX + cabW - 8, -H);
+    g.lineTo(cabX + cabW - 2, -H + 26); g.lineTo(cabX, -H + 26);
     g.closePath(); g.endFill();
 
     // Windshield
-    g.beginFill(PICKUP_COLORS.windowFrame); g.drawRoundedRect(cabX + cabW - 48, -H - 24, 42, 26, 3); g.endFill();
-    g.beginFill(PICKUP_COLORS.window, 0.82); g.drawRoundedRect(cabX + cabW - 46, -H - 22, 38, 22, 2); g.endFill();
-    g.beginFill(0xffffff, 0.15); g.drawRect(cabX + cabW - 45, -H - 21, 10, 10); g.endFill();
+    g.beginFill(PICKUP_COLORS.windowFrame); g.drawRoundedRect(cabX + cabW - 48, -H + 2, 42, 26, 3); g.endFill();
+    g.beginFill(PICKUP_COLORS.window, 0.82); g.drawRoundedRect(cabX + cabW - 46, -H + 4, 38, 22, 2); g.endFill();
+    g.beginFill(0xffffff, 0.15); g.drawRect(cabX + cabW - 45, -H + 5, 10, 10); g.endFill();
     // Side window
-    g.beginFill(PICKUP_COLORS.windowFrame); g.drawRoundedRect(cabX + 8, -H - 24, 35, 26, 3); g.endFill();
-    g.beginFill(PICKUP_COLORS.window, 0.78); g.drawRoundedRect(cabX + 10, -H - 22, 31, 22, 2); g.endFill();
-    g.beginFill(0xffffff, 0.12); g.drawRect(cabX + 12, -H - 21, 9, 10); g.endFill();
+    g.beginFill(PICKUP_COLORS.windowFrame); g.drawRoundedRect(cabX + 8, -H + 2, 35, 26, 3); g.endFill();
+    g.beginFill(PICKUP_COLORS.window, 0.78); g.drawRoundedRect(cabX + 10, -H + 4, 31, 22, 2); g.endFill();
+    g.beginFill(0xffffff, 0.12); g.drawRect(cabX + 12, -H + 5, 9, 10); g.endFill();
 
     // Headlight
     g.beginFill(PICKUP_COLORS.light); g.drawRoundedRect(W / 2 - 8, -H + 8, 10, 9, 2); g.endFill();
