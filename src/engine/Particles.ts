@@ -22,6 +22,7 @@ interface Particle {
 }
 
 export class Particles {
+  private app: PIXI.Application;
   public container: PIXI.Container;
   private pool: Particle[] = [];
   private readonly MAX = 180; // Tăng số lượng hạt lên một chút
