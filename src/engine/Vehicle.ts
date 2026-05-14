@@ -98,8 +98,17 @@ export class Vehicle {
         this.wFrontX = this.W / 2 - 32;
         this.wRearX = -this.W / 2 + 42;
         break;
+      case 'van':
+        const scale = 1.5; // Hệ số phóng to x lần
+        this.W = 140 * scale;
+        this.H = 60 * scale;
+        this.WR = 12 * scale; // Bánh xe cũng sẽ to lên theo
+        this.wFrontX = (this.W / 2 - 75);
+        this.wRearX = (-this.W / 2 + 60);
+        break;
       default: // van
-        this.W = 140; this.H = 60; this.WR = 16;
+        this.W = 140; this.H = 60;
+        this.WR = 16;
         this.wFrontX = this.W / 2 - 28;
         this.wRearX = -this.W / 2 + 28;
     }
@@ -120,6 +129,7 @@ export class Vehicle {
     const sprite = PIXI.Sprite.from('assets/vehicles/vehicle_vans_no_wheel.png');
     sprite.anchor.set(0.5, 1);
     // Scale sprite để khớp với kích thước thiết kế (W=140, H=60)
+
     sprite.width = this.W;
     sprite.height = this.H;
     this.bodyGfx.addChild(sprite);
@@ -256,30 +266,39 @@ export class Vehicle {
     [this.wheelFront, this.wheelRear].forEach((container, i) => {
       if (this.vehicleType === 'van') {
         const sprite = PIXI.Sprite.from('assets/vehicles/van_orange_wheel.png');
+
+        // Đảm bảo anchor luôn là 0.5 để xoay quanh tâm
         sprite.anchor.set(0.5);
+
+        // Căn chỉnh vị trí của Sprite trong Container về 0,0
+        sprite.x = 0;
+        sprite.y = 0;
+
         sprite.width = R * 2;
         sprite.height = R * 2;
+
         container.addChild(sprite);
+
       } else {
         const wg = new PIXI.Graphics();
         container.addChild(wg);
         // Draw everything at local (0,0) so it rotates around its own center
         const localX = 0;
 
-      // Tyre
-      wg.beginFill(wheelColor); wg.drawCircle(localX, 0, R); wg.endFill();
-      wg.lineStyle(this.vehicleType === 'jeep' ? 4 : 3, 0x111111); wg.drawCircle(localX, 0, R); wg.lineStyle(0);
+        // Tyre
+        wg.beginFill(wheelColor); wg.drawCircle(localX, 0, R); wg.endFill();
+        wg.lineStyle(this.vehicleType === 'jeep' ? 4 : 3, 0x111111); wg.drawCircle(localX, 0, R); wg.lineStyle(0);
 
-      // Tread detail for Jeep
-      if (this.vehicleType === 'jeep') {
-        wg.lineStyle(2, 0x111111, 0.5);
-        for (let t = 0; t < 8; t++) {
-          const a = (t / 8) * Math.PI * 2;
-          wg.moveTo(Math.cos(a) * (R - 3), Math.sin(a) * (R - 3));
-          wg.lineTo(Math.cos(a) * R, Math.sin(a) * R);
+        // Tread detail for Jeep
+        if (this.vehicleType === 'jeep') {
+          wg.lineStyle(2, 0x111111, 0.5);
+          for (let t = 0; t < 8; t++) {
+            const a = (t / 8) * Math.PI * 2;
+            wg.moveTo(Math.cos(a) * (R - 3), Math.sin(a) * (R - 3));
+            wg.lineTo(Math.cos(a) * R, Math.sin(a) * R);
+          }
+          wg.lineStyle(0);
         }
-        wg.lineStyle(0);
-      }
         // Hub
         wg.beginFill(hubColor); wg.drawCircle(localX, 0, R * 0.55); wg.endFill();
         wg.beginFill(0x444444); wg.drawCircle(localX, 0, R * 0.15); wg.endFill();
@@ -305,11 +324,11 @@ export class Vehicle {
     const oscillateR = Math.sin(time * 3 + 1) * 1 * speedFactor;
 
     this.wheelFront.x = this.wFrontX;
-    this.wheelFront.y = R * 0.05 + oscillateF;
+    this.wheelFront.y = R * 0.05 + oscillateF - 22;
     this.wheelFront.rotation = this.wheelAngle;
 
     this.wheelRear.x = this.wRearX;
-    this.wheelRear.y = R * 0.05 + oscillateR;
+    this.wheelRear.y = R * 0.05 + oscillateR - 22;
     this.wheelRear.rotation = this.wheelAngle;
   }
 

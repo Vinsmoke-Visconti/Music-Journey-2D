@@ -93,14 +93,14 @@ export class Road {
       lineColor = 0xffffff;
     }
 
-    // Vẽ phần dưới của mặt đất
+    // Vẽ phần dưới của mặt đất (vẽ dư xuống 1000px để không bị lộ nền)
     g.beginFill(roadColor);
-    g.moveTo(0, this.app.screen.height);
+    g.moveTo(0, this.app.screen.height + 1000);
     for (const p of this.points) {
       g.lineTo(p.x, p.y);
     }
     const lastX = this.points.length > 0 ? this.points[this.points.length - 1].x : this.app.screen.width;
-    g.lineTo(lastX, this.app.screen.height);
+    g.lineTo(lastX, this.app.screen.height + 1000);
     g.endFill();
 
     // Vẽ vạch kẻ đường (vạch đứt)

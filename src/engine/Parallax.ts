@@ -261,7 +261,7 @@ export class Parallax {
     for (let i = 0; i < steps; i++) {
       const t = i / steps;
       g.beginFill(this._lerpColor(gTop, gBot, t));
-      g.drawRect(0, groundY + (this.GROUND_THICKNESS) * i / steps, W, (this.GROUND_THICKNESS) / steps + 1);
+      g.drawRect(0, groundY + (this.GROUND_THICKNESS) * i / steps, W, (this.GROUND_THICKNESS) / steps + 1000);
       g.endFill();
     }
   }
