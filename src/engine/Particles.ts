@@ -22,7 +22,7 @@ interface Particle {
 }
 
 export class Particles {
-  private app: PIXI.Application;
+  public container: PIXI.Container;
   private pool: Particle[] = [];
   private readonly MAX = 180; // Tăng số lượng hạt lên một chút
   private dustColor: number = 0xd4b483;
@@ -30,6 +30,8 @@ export class Particles {
 
   constructor(app: PIXI.Application) {
     this.app = app;
+    this.container = new PIXI.Container();
+    this.app.stage.addChild(this.container);
     this._initPool();
   }
 
@@ -37,7 +39,7 @@ export class Particles {
     for (let i = 0; i < this.MAX; i++) {
       const gfx = new PIXI.Graphics();
       gfx.visible = false;
-      this.app.stage.addChild(gfx);
+      this.container.addChild(gfx);
       this.pool.push({
         gfx, vx: 0, vy: 0,
         life: 0, maxLife: 1,

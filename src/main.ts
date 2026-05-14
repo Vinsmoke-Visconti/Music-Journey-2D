@@ -50,6 +50,8 @@ parallax.loadEnvironment(currentEnv);
 road.generatePoints(app.screen.width);
 road.draw(currentEnvId);
 particles.setDustColor(currentEnv.particleColor);
+// Đảm bảo lớp hạt luôn nằm trên cùng
+app.stage.addChild(particles.container);
 
 // ─── 4. DOM refs ──────────────────────────────────────────────
 const audioEl       = document.getElementById('audio-el')       as HTMLAudioElement;
@@ -199,6 +201,8 @@ vehicleSelect.addEventListener('change', () => {
   currentVehicleId  = newId;
   currentVehicleCfg = newCfg;
   vehicle = new Vehicle(app, currentVehicleCfg);
+  // Đưa lớp hạt lên trên xe mới
+  app.stage.addChild(particles.container);
 });
 
 audioEl.addEventListener('ended', () => {

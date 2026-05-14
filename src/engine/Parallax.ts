@@ -98,7 +98,8 @@ export class Parallax {
       const stepT = i / steps;
       const color = this._lerpColor(top, bot, stepT);
       g.beginFill(color);
-      g.drawRect(0, (H * 0.72 * i) / steps, W, H * 0.72 / steps + 1);
+      // Vẽ rộng ra 2 bên để tránh hở khi rung màn hình (camera shake)
+      g.drawRect(-1000, (H * 0.72 * i) / steps, W + 2000, H * 0.72 / steps + 1);
       g.endFill();
     }
   }
@@ -108,7 +109,8 @@ export class Parallax {
 
     // Layer 1: Mây xa (cuộn chậm)
     const cloudGfx = new PIXI.Graphics();
-    for (let cx = 60; cx < 20000; cx += 220 + Math.random() * 100) {
+    // Vẽ từ âm để tránh hở lề trái
+    for (let cx = -1000; cx < 25000; cx += 220 + Math.random() * 100) {
       const cy = 20 + Math.random() * 40;
       const cw = 80 + Math.random() * 60;
       const ch = 20 + Math.random() * 16;
@@ -125,10 +127,10 @@ export class Parallax {
     // Layer 2: Biển xa (cuộn vừa)
     const seaGfx = new PIXI.Graphics();
     seaGfx.beginFill(0x3a9bd5, 0.8);
-    seaGfx.drawRect(0, groundY - 80, 20000, 80);
+    seaGfx.drawRect(-1000, groundY - 80, 26000, 80);
     seaGfx.endFill();
     // Sóng biển
-    for (let i = 0; i < 22; i++) {
+    for (let i = -5; i < 150; i++) {
       seaGfx.beginFill(0x5ab4e8, 0.4);
       seaGfx.drawEllipse(i * 180 + 80, groundY - 50, 90, 12);
       seaGfx.endFill();
@@ -137,7 +139,7 @@ export class Parallax {
 
     // Layer 3: Cây dừa (cuộn gần)
     const palmGfx = new PIXI.Graphics();
-    for (let px = 120; px < 20000; px += 250 + Math.random() * 100) {
+    for (let px = -1000; px < 25000; px += 250 + Math.random() * 100) {
       // Thân cây
       palmGfx.beginFill(0x8b6914);
       palmGfx.drawRoundedRect(px - 8, groundY - 120, 16, 120, 4);
@@ -261,7 +263,7 @@ export class Parallax {
     for (let i = 0; i < steps; i++) {
       const t = i / steps;
       g.beginFill(this._lerpColor(gTop, gBot, t));
-      g.drawRect(0, groundY + (this.GROUND_THICKNESS) * i / steps, W, (this.GROUND_THICKNESS) / steps + 1000);
+      g.drawRect(-1000, groundY + (this.GROUND_THICKNESS) * i / steps, W + 2000, (this.GROUND_THICKNESS) / steps + 1000);
       g.endFill();
     }
   }
