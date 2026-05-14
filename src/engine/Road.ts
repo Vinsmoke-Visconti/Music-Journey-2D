@@ -52,10 +52,10 @@ export class Road {
     this.points = [];
     const count = Math.ceil(width / this.SEGMENT_WIDTH) + 5;
     
-    // Giảm độ gồ ghề cho Beach và Desert theo yêu cầu (giảm 50%)
+    // Giảm độ gồ ghề cho Beach và Desert theo yêu cầu (giảm thêm 50% nữa)
     let amplitude = 15;
     if (envId === 'beach' || envId === 'desert') {
-      amplitude = 7.5;
+      amplitude = 3.75; // 7.5 / 2
     }
 
     for (let i = 0; i < count; i++) {
