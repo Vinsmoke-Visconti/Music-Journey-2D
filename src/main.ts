@@ -47,7 +47,7 @@ const particles = new Particles(app);
 const audio     = new AudioSync();
 
 parallax.loadEnvironment(currentEnv);
-road.generatePoints(app.screen.width);
+road.generatePoints(app.screen.width, currentEnvId);
 road.draw(currentEnvId);
 particles.setDustColor(currentEnv.particleColor);
 // Đảm bảo lớp hạt luôn nằm trên cùng
@@ -470,7 +470,7 @@ app.ticker.add(() => {
 // ─── 10. Resize ───────────────────────────────────────────────
 window.addEventListener('resize', () => {
   road.resize(app.screen.width, app.screen.height);
-  road.generatePoints(app.screen.width);
+  road.generatePoints(app.screen.width, currentEnvId);
   road.draw(currentEnvId);
   parallax.resize(currentEnv);
 });

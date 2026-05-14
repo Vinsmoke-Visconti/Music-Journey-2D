@@ -48,18 +48,23 @@ export class Road {
     return noise1 * (1 - f2) + noise2 * f2;
   }
 
-  generatePoints(width: number): void {
+  generatePoints(width: number, envId: string): void {
     this.points = [];
     const count = Math.ceil(width / this.SEGMENT_WIDTH) + 5;
     
+    // Giảm độ gồ ghề cho Beach và Desert theo yêu cầu (giảm 50%)
+    let amplitude = 15;
+    if (envId === 'beach' || envId === 'desert') {
+      amplitude = 7.5;
+    }
+
     for (let i = 0; i < count; i++) {
       const x = i * this.SEGMENT_WIDTH;
-      // Kết hợp nhiều tầng noise (Octaves) để đường trông tự nhiên hơn
       const n1 = this.getNoise(x + this.noiseOffset);
       const n2 = this.getNoise((x + this.noiseOffset) * 2.5) * 0.4;
       const n3 = this.getNoise((x + this.noiseOffset) * 0.5) * 2.0;
       
-      const noiseY = (n1 + n2 + n3) * 15; // Biên độ gập ghềnh giảm xuống cho mượt hơn
+      const noiseY = (n1 + n2 + n3) * amplitude;
       
       this.points.push({
         x: x,
@@ -69,11 +74,8 @@ export class Road {
   }
 
   update(speed: number, width: number, envId: string): void {
-    // Tăng offset dựa trên tốc độ xe
     this.noiseOffset += speed * 5;
-    
-    // Tạo lại các điểm dựa trên offset mới
-    this.generatePoints(width);
+    this.generatePoints(width, envId);
     this.draw(envId);
   }
 
