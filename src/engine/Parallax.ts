@@ -23,6 +23,7 @@ export class Parallax {
   private groundGfx: PIXI.Graphics;
   private currentEnv: Environment | null = null;
   private currentProgress: number = 0;
+  private readonly GROUND_THICKNESS = 250; // Match Road.ts thickness
 
   // Cấu hình màu bầu trời theo thời gian (Progress 0 -> 1)
   private readonly TIME_COLORS = [
@@ -103,11 +104,11 @@ export class Parallax {
   }
 
   private _buildBeachLayers(W: number, H: number): void {
-    const groundY = H * 0.72;
+    const groundY = 0;
 
     // Layer 1: Mây xa (cuộn chậm)
     const cloudGfx = new PIXI.Graphics();
-    for (let cx = 60; cx < 4000; cx += 220 + Math.random() * 100) {
+    for (let cx = 60; cx < 20000; cx += 220 + Math.random() * 100) {
       const cy = 20 + Math.random() * 40;
       const cw = 80 + Math.random() * 60;
       const ch = 20 + Math.random() * 16;
@@ -124,7 +125,7 @@ export class Parallax {
     // Layer 2: Biển xa (cuộn vừa)
     const seaGfx = new PIXI.Graphics();
     seaGfx.beginFill(0x3a9bd5, 0.8);
-    seaGfx.drawRect(0, groundY - 80, 4000, 80);
+    seaGfx.drawRect(0, groundY - 80, 20000, 80);
     seaGfx.endFill();
     // Sóng biển
     for (let i = 0; i < 22; i++) {
@@ -136,7 +137,7 @@ export class Parallax {
 
     // Layer 3: Cây dừa (cuộn gần)
     const palmGfx = new PIXI.Graphics();
-    for (let px = 120; px < 4000; px += 250 + Math.random() * 100) {
+    for (let px = 120; px < 20000; px += 250 + Math.random() * 100) {
       // Thân cây
       palmGfx.beginFill(0x8b6914);
       palmGfx.drawRoundedRect(px - 8, groundY - 120, 16, 120, 4);
@@ -157,11 +158,11 @@ export class Parallax {
   }
 
   private _buildDesertLayers(W: number, H: number): void {
-    const groundY = H * 0.72;
+    const groundY = 0;
 
     // Mây bụi
     const dustGfx = new PIXI.Graphics();
-    for (let x = 80; x < 4000; x += 250 + Math.random() * 150) {
+    for (let x = 80; x < 20000; x += 250 + Math.random() * 150) {
       dustGfx.beginFill(0xd4a855, 0.2);
       dustGfx.drawEllipse(x, 60 + Math.random() * 20, 100, 20);
       dustGfx.endFill();
@@ -171,7 +172,7 @@ export class Parallax {
     // Đồi cát
     const duneGfx = new PIXI.Graphics();
     duneGfx.beginFill(0xc4922a);
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 80; i++) {
       duneGfx.drawEllipse(i * 250 + 100, groundY - 30, 180, 50);
     }
     duneGfx.endFill();
@@ -179,7 +180,7 @@ export class Parallax {
 
     // Xương rồng
     const cactusGfx = new PIXI.Graphics();
-    for (let cx = 150; cx < 4000; cx += 300 + Math.random() * 100) {
+    for (let cx = 150; cx < 20000; cx += 300 + Math.random() * 100) {
       cactusGfx.beginFill(0x3a7d44);
       cactusGfx.drawRoundedRect(cx - 7, groundY - 90, 14, 90, 5);
       cactusGfx.drawRoundedRect(cx - 22, groundY - 60, 16, 8, 3);
@@ -190,12 +191,12 @@ export class Parallax {
   }
 
   private _buildSnowLayers(W: number, H: number): void {
-    const groundY = H * 0.72;
+    const groundY = 0;
 
     // Núi xa
     const mountainGfx = new PIXI.Graphics();
     mountainGfx.beginFill(0x8aafc0);
-    for (let mx = 100; mx < 4000; mx += 250) {
+    for (let mx = 100; mx < 20000; mx += 250) {
       const mh = 180 + Math.random() * 70;
       mountainGfx.drawPolygon([mx - 120, groundY - 20, mx, groundY - mh, mx + 120, groundY - 20]);
     }
@@ -208,7 +209,7 @@ export class Parallax {
     // Let's use a deterministic approach instead of random inside the loop for snow to match mountain height
     // Hoặc lưu vào array
     const mountains: {x: number, h: number}[] = [];
-    for (let mx = 100; mx < 4000; mx += 250) {
+    for (let mx = 100; mx < 20000; mx += 250) {
       mountains.push({ x: mx, h: 180 + Math.random() * 70 });
     }
     mountainGfx.clear();
@@ -227,7 +228,7 @@ export class Parallax {
 
     // Cây thông
     const treeGfx = new PIXI.Graphics();
-    for (let tx = 80; tx < 4000; tx += 200 + Math.random() * 80) {
+    for (let tx = 80; tx < 20000; tx += 200 + Math.random() * 80) {
       treeGfx.beginFill(0x2d5a27);
       treeGfx.drawPolygon([tx, groundY - 80, tx - 30, groundY - 20, tx + 30, groundY - 20]);
       treeGfx.drawPolygon([tx, groundY - 100, tx - 22, groundY - 50, tx + 22, groundY - 50]);
@@ -246,9 +247,9 @@ export class Parallax {
   private _drawGround(env: Environment): void {
     const g = this.groundGfx;
     g.clear();
-    const W = 4000;
+    const W = 20000;
     const H = this.app.screen.height;
-    const groundY = H * 0.72;
+    const groundY = H - this.GROUND_THICKNESS;
 
     const groundColors: Record<string, [number, number]> = {
       beach:  [0xf5d17a, 0xe8b84b],
@@ -260,7 +261,7 @@ export class Parallax {
     for (let i = 0; i < steps; i++) {
       const t = i / steps;
       g.beginFill(this._lerpColor(gTop, gBot, t));
-      g.drawRect(0, groundY + (H - groundY) * i / steps, W, (H - groundY) / steps + 1);
+      g.drawRect(0, groundY + (this.GROUND_THICKNESS) * i / steps, W, (this.GROUND_THICKNESS) / steps + 1);
       g.endFill();
     }
   }
@@ -281,11 +282,17 @@ export class Parallax {
       // Độ sáng của vật thể (núi, cây) giảm xuống khi về đêm
       const nightFactor = Math.cos((this.currentProgress - 0.5) * Math.PI * 2) * 0.5 + 0.5;
       layer.gfx.alpha = 0.4 + nightFactor * 0.6;
+      
+      // Dynamic y positioning based on current screen height
+      layer.gfx.y = this.app.screen.height - this.GROUND_THICKNESS;
     });
   }
 
   resize(env: Environment): void {
-    this.loadEnvironment(env);
+    // Only redraw the sky and ground to fill the new screen bounds.
+    // We do NOT call loadEnvironment() here to prevent trees/clouds from regenerating and jumping.
+    this._drawSkyGradient();
+    this._drawGround(env);
   }
 
   private _lerpColor(a: number, b: number, t: number): number {

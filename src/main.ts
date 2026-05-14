@@ -420,7 +420,7 @@ window.addEventListener('resize', () => {
   road.resize(app.screen.width, app.screen.height);
   road.generatePoints(app.screen.width);
   road.draw(currentEnvId);
-  parallax.loadEnvironment(currentEnv);
+  parallax.resize(currentEnv);
 });
 
 console.log('[Main] 🎵 Music Journey 2D — Giai đoạn 2 hoàn thiện!');

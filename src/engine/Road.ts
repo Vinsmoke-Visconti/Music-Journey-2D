@@ -9,25 +9,22 @@ export class Road {
   private container: PIXI.Container;
   private gfx: PIXI.Graphics;
   private points: { x: number; y: number }[] = [];
-  private screenW = 0;
-  private screenH = 0;
+  private app: PIXI.Application;
   private noiseOffset = 0;
 
   private readonly SEGMENT_WIDTH = 15; // Độ chi tiết của đường
-  private readonly GROUND_RATIO  = 0.65; // Vị trí mặt đất cơ bản (65% chiều cao màn hình)
+  private readonly GROUND_THICKNESS = 250; // Độ dày cố định của mặt đất từ cạnh dưới màn hình
 
   // Perlin Noise 1D simple implementation
   private seed = Math.random();
   private noiseValues: number[] = [];
 
   constructor(app: PIXI.Application) {
+    this.app = app;
     this.container = new PIXI.Container();
     this.gfx = new PIXI.Graphics();
     this.container.addChild(this.gfx);
     app.stage.addChild(this.container);
-
-    this.screenW = app.screen.width;
-    this.screenH = app.screen.height;
 
     // Khởi tạo mảng noise ngẫu nhiên
     for (let i = 0; i < 200; i++) {
@@ -66,7 +63,7 @@ export class Road {
       
       this.points.push({
         x: x,
-        y: this.screenH * this.GROUND_RATIO + noiseY
+        y: this.app.screen.height - this.GROUND_THICKNESS + noiseY
       });
     }
   }
@@ -98,12 +95,12 @@ export class Road {
 
     // Vẽ phần dưới của mặt đất
     g.beginFill(roadColor);
-    g.moveTo(0, this.screenH);
+    g.moveTo(0, this.app.screen.height);
     for (const p of this.points) {
       g.lineTo(p.x, p.y);
     }
-    const lastX = this.points.length > 0 ? this.points[this.points.length - 1].x : this.screenW;
-    g.lineTo(lastX, this.screenH);
+    const lastX = this.points.length > 0 ? this.points[this.points.length - 1].x : this.app.screen.width;
+    g.lineTo(lastX, this.app.screen.height);
     g.endFill();
 
     // Vẽ vạch kẻ đường (vạch đứt)
@@ -131,7 +128,6 @@ export class Road {
   }
 
   resize(w: number, h: number): void {
-    this.screenW = w;
-    this.screenH = h;
+    // Không cần lưu cache vì đã dùng this.app.screen trực tiếp
   }
 }
