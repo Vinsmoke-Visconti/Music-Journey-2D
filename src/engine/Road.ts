@@ -124,7 +124,7 @@ export class Road {
         return p1.y + (p2.y - p1.y) * t;
       }
     }
-    return this.screenH * this.GROUND_RATIO;
+    return this.app.screen.height - this.GROUND_THICKNESS;
   }
 
   resize(w: number, h: number): void {
