@@ -75,13 +75,11 @@ const albumArt      = document.getElementById('album-art')      as HTMLDivElemen
 
 // ─── 5. Playlist ──────────────────────────────────────────────
 const PLAYLIST = [
-  { name: '☀️ Summer Breeze (Bensound)', src: 'https://www.bensound.com/bensound-music/bensound-summer.mp3' },
-  { name: '☁️ Cloud 9 (Itro & Tobu)', src: 'https://raw.githubusercontent.com/Vinsmoke-Visconti/Music-Journey-2D-Assets/main/audio/itro-tobu-cloud-9.mp3' },
-  { name: '🚀 On & On (Cartoon)', src: 'https://raw.githubusercontent.com/Vinsmoke-Visconti/Music-Journey-2D-Assets/main/audio/cartoon-on-on.mp3' },
-  { name: '⛰️ Adventure (Bensound)', src: 'https://www.bensound.com/bensound-music/bensound-adventure.mp3' },
-  { name: '💡 Creative Minds (Bensound)', src: 'https://www.bensound.com/bensound-music/bensound-creativeminds.mp3' },
-  { name: '🎷 Jazz Comedy (Bensound)', src: 'https://www.bensound.com/bensound-music/bensound-jazzcomedy.mp3' },
-  { name: '🌈 Sunburst (Itro & Tobu)', src: 'https://raw.githubusercontent.com/Vinsmoke-Visconti/Music-Journey-2D-Assets/main/audio/itro-tobu-sunburst.mp3' },
+  { name: '🎵 Viper Beat (Original)', src: 'https://raw.githubusercontent.com/mdn/webaudio-examples/main/audio-analyser/viper.mp3' },
+  { name: '☀️ Summer Breeze (Bensound)', src: 'https://archive.org/download/bensound-summer/bensound-summer.mp3' }, // Archive.org link is more stable for CORS
+  { name: '☁️ Cloud 9 (Itro & Tobu)', src: 'https://raw.githubusercontent.com/Vinsmoke-Visconti/Music-Journey-2D/feature/complete-journey/public/assets/audio/itro-tobu-cloud-9.mp3' }, 
+  { name: '🎷 Funky Energy', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+  { name: '🎸 Acoustic Vibe', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' },
 ];
 let trackIndex = 0;
 
@@ -138,15 +136,38 @@ function showToast(msg: string, durationMs = 2500): void {
 
 // ─── 7. Event Listeners ───────────────────────────────────────
 playBtn.addEventListener('click', () => {
-  if (!audio.isConnected()) audio.connect(audioEl);
+  if (!audio.isConnected()) {
+    try {
+      audio.connect(audioEl);
+    } catch (e) {
+      console.warn('[Audio] Context connection failed:', e);
+    }
+  }
   audio.resume();
+
   if (audioEl.paused) {
-    audioEl.play();
+    audioEl.play().catch(err => {
+      console.error('[Audio] Play error:', err);
+      showToast('❌ Không thể phát bài này. Thử bài khác nhé!');
+      playBtn.innerHTML = '<span class="icon">▶</span>';
+    });
     playBtn.innerHTML = '<span class="icon">⏸</span>';
   } else {
     audioEl.pause();
     playBtn.innerHTML = '<span class="icon">▶</span>';
   }
+});
+
+// Lắng nghe lỗi audio
+audioEl.addEventListener('error', (e) => {
+  console.error('[Audio] Element error:', e);
+  showToast('❌ Lỗi tải nhạc. Vui lòng kiểm tra kết nối!');
+  playBtn.innerHTML = '<span class="icon">▶</span>';
+  vehicle.pause();
+});
+
+audioEl.addEventListener('stalled', () => {
+  console.warn('[Audio] Playback stalled...');
 });
 
 prevBtn.addEventListener('click', () => {
