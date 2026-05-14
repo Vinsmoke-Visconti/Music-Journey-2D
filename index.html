@@ -374,6 +374,23 @@
       box-shadow: var(--shadow);
       padding: 12px;
       display: none;
+      max-height: 350px;
+      overflow-y: auto;
+    }
+    /* Tùy chỉnh thanh cuộn (Custom Scrollbar) */
+    #playlist-panel::-webkit-scrollbar {
+      width: 5px;
+    }
+    #playlist-panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #playlist-panel::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 10px;
+      opacity: 0.5;
+    }
+    #playlist-panel::-webkit-scrollbar-thumb:hover {
+      background: #fff;
     }
     #playlist-panel.open { display: block; animation: slideUp .2s ease; }
     @keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; } }
@@ -495,15 +512,7 @@
   <!-- Playlist Panel -->
   <div id="playlist-panel">
     <h3>📋 Playlist</h3>
-    <div class="pl-item active" data-idx="0">
-      <span class="pl-num">1</span>🎵 Lofi Chill Ride
-    </div>
-    <div class="pl-item" data-idx="1">
-      <span class="pl-num">2</span>🚗 Road Trip Beats
-    </div>
-    <div class="pl-item" data-idx="2">
-      <span class="pl-num">3</span>🌅 Sunset Drive
-    </div>
+    <div id="playlist-items"></div>
   </div>
 
   <!-- Player Panel -->

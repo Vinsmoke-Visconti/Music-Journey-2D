@@ -28,8 +28,8 @@ export const vehicles: Vehicle[] = [
     mass: 1.5,
     wheelOffset: 50,
     suspensionStrength: 0.4,
-    maxSpeed: 2.8,
-    acceleration: 0.03,
+    maxSpeed: 2.24,     // 2.8 * 0.8
+    acceleration: 0.024, // 0.03 * 0.8
     deceleration: 0.02,
     sprite: {
       body: 'sprites/van_body.png',
@@ -45,8 +45,8 @@ export const vehicles: Vehicle[] = [
     mass: 2.0,
     wheelOffset: 60,
     suspensionStrength: 0.7,
-    maxSpeed: 3.6,
-    acceleration: 0.02,
+    maxSpeed: 2.88,      // 3.6 * 0.8
+    acceleration: 0.016,  // 0.02 * 0.8
     deceleration: 0.015,
     sprite: {
       body: 'sprites/jeep_body.png',
@@ -62,8 +62,8 @@ export const vehicles: Vehicle[] = [
     mass: 1.8,
     wheelOffset: 55,
     suspensionStrength: 0.5,
-    maxSpeed: 3.2,
-    acceleration: 0.025,
+    maxSpeed: 2.56,      // 3.2 * 0.8
+    acceleration: 0.02,  // 0.025 * 0.8
     deceleration: 0.02,
     sprite: {
       body: 'sprites/pickup_body.png',

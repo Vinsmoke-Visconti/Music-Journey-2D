@@ -75,9 +75,13 @@ const albumArt      = document.getElementById('album-art')      as HTMLDivElemen
 
 // ─── 5. Playlist ──────────────────────────────────────────────
 const PLAYLIST = [
-  { name: '🎵 Viper Beat (Fast Load)', src: 'https://raw.githubusercontent.com/mdn/webaudio-examples/main/audio-analyser/viper.mp3' },
-  { name: '🚗 Road Trip (SoundHelix)', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
-  { name: '🌅 Sunset Drive (SoundHelix)', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
+  { name: '☀️ Summer Breeze (Bensound)', src: 'https://www.bensound.com/bensound-music/bensound-summer.mp3' },
+  { name: '☁️ Cloud 9 (Itro & Tobu)', src: 'https://raw.githubusercontent.com/Vinsmoke-Visconti/Music-Journey-2D-Assets/main/audio/itro-tobu-cloud-9.mp3' },
+  { name: '🚀 On & On (Cartoon)', src: 'https://raw.githubusercontent.com/Vinsmoke-Visconti/Music-Journey-2D-Assets/main/audio/cartoon-on-on.mp3' },
+  { name: '⛰️ Adventure (Bensound)', src: 'https://www.bensound.com/bensound-music/bensound-adventure.mp3' },
+  { name: '💡 Creative Minds (Bensound)', src: 'https://www.bensound.com/bensound-music/bensound-creativeminds.mp3' },
+  { name: '🎷 Jazz Comedy (Bensound)', src: 'https://www.bensound.com/bensound-music/bensound-jazzcomedy.mp3' },
+  { name: '🌈 Sunburst (Itro & Tobu)', src: 'https://raw.githubusercontent.com/Vinsmoke-Visconti/Music-Journey-2D-Assets/main/audio/itro-tobu-sunburst.mp3' },
 ];
 let trackIndex = 0;
 
@@ -87,8 +91,30 @@ function loadTrack(idx: number): void {
   trackNameEl.textContent = PLAYLIST[trackIndex].name;
   progressFill.style.width = '0%';
   timeEl.textContent = '0:00 / 0:00';
+  
+  // Cập nhật trạng thái active trong UI
   document.querySelectorAll('.pl-item').forEach((el, i) => {
     el.classList.toggle('active', i === trackIndex);
+  });
+}
+
+// Hàm khởi tạo danh sách nhạc trong UI
+function renderPlaylist(): void {
+  const container = document.getElementById('playlist-items');
+  if (!container) return;
+  container.innerHTML = '';
+  PLAYLIST.forEach((track, i) => {
+    const item = document.createElement('div');
+    item.className = 'pl-item' + (i === trackIndex ? ' active' : '');
+    item.setAttribute('data-idx', i.toString());
+    item.innerHTML = `<span class="pl-num">${i + 1}</span> ${track.name}`;
+    item.onclick = () => {
+      loadTrack(i);
+      audioEl.play();
+      // Đồng bộ icon nút Play
+      playBtn.innerHTML = '<span class="icon">⏸</span>';
+    };
+    container.appendChild(item);
   });
 }
 
@@ -240,6 +266,7 @@ function _updateAuthUI() {
 }
 
 initAuth();
+renderPlaylist(); // Khởi tạo danh sách nhạc
 loadTrack(0);
 
 // --- Phase 5: Shop Logic ---
