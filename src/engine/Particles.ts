@@ -65,13 +65,14 @@ export class Particles {
       p.active = true;
       p.type = 'DUST';
       p.gfx.visible = true;
-      p.gfx.x = x + (Math.random() - 0.5) * 20;
+      p.gfx.x = x + (Math.random() - 0.5) * 10;
       p.gfx.y = y;
-      p.vx = -(Math.random() * speed * 0.5 + 0.5);
-      p.vy = -(Math.random() * 2.0 + 0.5);
+      // Bắn mạnh về phía sau (vx âm lớn hơn)
+      p.vx = -(speed * 3 + Math.random() * 4);
+      p.vy = -(Math.random() * 3);
       p.life = 1.0;
-      p.decay = 0.02 + Math.random() * 0.03;
-      p.size = 2 + Math.random() * 4;
+      p.decay = 0.03 + Math.random() * 0.04;
+      p.size = 1 + Math.random() * 2; // Hạt bụi nhỏ hơn
       p.color = this.dustColor;
       this._drawParticle(p);
     }
@@ -86,13 +87,15 @@ export class Particles {
     p.gfx.visible = true;
     p.gfx.x = x;
     p.gfx.y = y;
-    p.vx = -(Math.random() * 0.5 + 0.2);
-    p.vy = -(Math.random() * 1.0 + 0.2);
+    p.vx = -(Math.random() * 0.4 + 0.1);
+    p.vy = -(Math.random() * 0.8 + 0.4);
     p.life = 1.0;
-    p.decay = 0.01 + Math.random() * 0.02;
-    p.size = 6 + Math.random() * 8;
+    // Tốc độ phân rã để tồn tại khoảng 1.5s (90 frames)
+    p.decay = 0.009 + Math.random() * 0.004;
+    p.size = 5 + Math.random() * 7;
     p.color = this.smokeColor;
     this._drawParticle(p);
+    this.container.addChild(p.gfx); // Đảm bảo hạt mới lên trên
   }
 
   /** Phát hạt môi trường (Tuyết hoặc Lá rơi) */
@@ -152,8 +155,11 @@ export class Particles {
       p.gfx.x += p.vx;
       p.gfx.y += p.vy;
 
-      if (p.type === 'DUST' || p.type === 'SMOKE') {
-        p.vy -= 0.03; // Nổi lên
+      if (p.type === 'DUST') {
+        p.vy += 0.15; // Bụi rơi xuống đất nhanh hơn
+        p.vx *= 0.96; // Giảm tốc độ ngang nhanh
+      } else if (p.type === 'SMOKE') {
+        p.vy -= 0.04; // Khói bay lên trên
         p.vx *= 0.98;
       } else if (p.type === 'SNOW') {
         p.gfx.x += Math.sin(Date.now() * 0.002) * 0.5; // Lắc lư khi rơi
