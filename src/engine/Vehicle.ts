@@ -73,9 +73,9 @@ export class Vehicle {
     this.wheelFront = new PIXI.Graphics();
     this.wheelRear = new PIXI.Graphics();
 
-    this.container.addChild(this.wheelRear);
-    this.container.addChild(this.wheelFront);
     this.container.addChild(this.suspensionContainer);
+    this.suspensionContainer.addChild(this.wheelRear);
+    this.suspensionContainer.addChild(this.wheelFront);
     this.suspensionContainer.addChild(this.bodyGfx);
 
     this._drawBody();
@@ -308,11 +308,11 @@ export class Vehicle {
     const oscillateR = Math.sin(time * 3 + 1) * 1 * speedFactor;
 
     this.wheelFront.x = this.wFrontX;
-    this.wheelFront.y = R + oscillateF;
+    this.wheelFront.y = R * 0.05 + oscillateF;
     this.wheelFront.rotation = this.wheelAngle;
 
     this.wheelRear.x = this.wRearX;
-    this.wheelRear.y = R + oscillateR;
+    this.wheelRear.y = R * 0.05 + oscillateR;
     this.wheelRear.rotation = this.wheelAngle;
   }
 

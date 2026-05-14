@@ -102,7 +102,8 @@ export class Road {
     for (const p of this.points) {
       g.lineTo(p.x, p.y);
     }
-    g.lineTo(this.screenW, this.screenH);
+    const lastX = this.points.length > 0 ? this.points[this.points.length - 1].x : this.screenW;
+    g.lineTo(lastX, this.screenH);
     g.endFill();
 
     // Vẽ vạch kẻ đường (vạch đứt)

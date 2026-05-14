@@ -73,7 +73,7 @@ export class Parallax {
     if (!this.currentEnv) return;
     const g = this.skyGfx;
     g.clear();
-    const W = this.app.screen.width;
+    const W = 4000;
     const H = this.app.screen.height;
 
     // Tìm 2 mốc thời gian gần nhất để nội suy
@@ -246,7 +246,7 @@ export class Parallax {
   private _drawGround(env: Environment): void {
     const g = this.groundGfx;
     g.clear();
-    const W = this.app.screen.width;
+    const W = 4000;
     const H = this.app.screen.height;
     const groundY = H * 0.72;
 
