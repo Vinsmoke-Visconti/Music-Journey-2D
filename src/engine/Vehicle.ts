@@ -30,9 +30,9 @@ const PICKUP_COLORS = {
 
 export class Vehicle {
   public container: PIXI.Container;
-  private bodyGfx: PIXI.Graphics;
-  private wheelFront: PIXI.Graphics;
-  private wheelRear: PIXI.Graphics;
+  private bodyGfx: PIXI.Container;
+  private wheelFront: PIXI.Container;
+  private wheelRear: PIXI.Container;
   private suspensionContainer: PIXI.Container;
 
   private app: PIXI.Application;
@@ -69,9 +69,9 @@ export class Vehicle {
 
     this.container = new PIXI.Container();
     this.suspensionContainer = new PIXI.Container();
-    this.bodyGfx = new PIXI.Graphics();
-    this.wheelFront = new PIXI.Graphics();
-    this.wheelRear = new PIXI.Graphics();
+    this.bodyGfx = new PIXI.Container();
+    this.wheelFront = new PIXI.Container();
+    this.wheelRear = new PIXI.Container();
 
     this.container.addChild(this.suspensionContainer);
     this.suspensionContainer.addChild(this.wheelRear);
@@ -106,6 +106,7 @@ export class Vehicle {
   }
 
   private _drawBody(): void {
+    this.bodyGfx.removeChildren();
     switch (this.vehicleType) {
       case 'jeep': this._drawJeep(); break;
       case 'pickup': this._drawPickup(); break;
@@ -115,40 +116,23 @@ export class Vehicle {
 
   // ── VAN ──────────────────────────────────────────────────────
   private _drawVan(): void {
-    const g = this.bodyGfx; g.clear();
-    const W = this.W, H = this.H;
+    // Ưu tiên dùng hình ảnh nếu là Van
+    const sprite = PIXI.Sprite.from('assets/vehicles/vehicle_vans_no_wheel.png');
+    sprite.anchor.set(0.5, 1);
+    // Scale sprite để khớp với kích thước thiết kế (W=140, H=60)
+    sprite.width = this.W;
+    sprite.height = this.H;
+    this.bodyGfx.addChild(sprite);
 
-    g.beginFill(VAN_COLORS.body); g.drawRoundedRect(-W / 2, -H, W, H, 6); g.endFill();
-    g.beginFill(VAN_COLORS.bodyAccent, 0.4); g.drawRoundedRect(-W / 2, -H / 2, W, H / 2, 6); g.endFill();
-    // Mái xe thấp hơn
-    g.beginFill(VAN_COLORS.roof); g.drawRoundedRect(-W / 2 + 5, -H - 5, W - 10, 10, 4); g.endFill();
-    g.beginFill(VAN_COLORS.stripe, 0.9); g.drawRect(-W / 2, -H * 0.45, W, 5); g.endFill();
-
-    // Cửa sổ (vẽ dịch xuống để nằm trong thân xe)
-    g.beginFill(VAN_COLORS.windowFrame); g.drawRoundedRect(W / 2 - 42, -H + 5, 35, 27, 3); g.endFill();
-    g.beginFill(VAN_COLORS.window, 0.85); g.drawRoundedRect(W / 2 - 40, -H + 7, 31, 23, 2); g.endFill();
-
-    // Side windows
-    for (let i = 0; i < 2; i++) {
-      const wx = -W / 2 + 10 + i * 40;
-      g.beginFill(VAN_COLORS.windowFrame); g.drawRoundedRect(wx, -H + 5, 32, 27, 3); g.endFill();
-      g.beginFill(VAN_COLORS.window, 0.8); g.drawRoundedRect(wx + 2, -H + 7, 28, 23, 2); g.endFill();
-    }
-    // Lights
-    g.beginFill(VAN_COLORS.light); g.drawRoundedRect(W / 2 - 8, -H + 35, 10, 8, 2); g.endFill();
-    g.beginFill(0xffffff, 0.5); g.drawRoundedRect(W / 2 - 7, -H + 36, 6, 5, 1); g.endFill();
-    g.beginFill(0xff4444); g.drawRoundedRect(-W / 2 - 2, -H + 35, 8, 8, 2); g.endFill();
-    // Bumpers
-    g.beginFill(VAN_COLORS.bumper);
-    g.drawRoundedRect(W / 2 - 6, -H + 45, 10, 14, 2);
-    g.drawRoundedRect(-W / 2 - 4, -H + 45, 10, 14, 2);
-    g.endFill();
-    g.beginFill(VAN_COLORS.exhaust); g.drawRoundedRect(-W / 2 + 5, -6, 20, 5, 2); g.endFill();
+    // Giữ lại các hiệu ứng vẽ bằng Graphics nếu cần
+    const g = new PIXI.Graphics();
+    this.bodyGfx.addChild(g);
   }
 
   // ── JEEP ─────────────────────────────────────────────────────
   private _drawJeep(): void {
-    const g = this.bodyGfx; g.clear();
+    const g = new PIXI.Graphics();
+    this.bodyGfx.addChild(g);
     const W = this.W, H = this.H;
 
     // Body
@@ -202,7 +186,8 @@ export class Vehicle {
 
   // ── PICKUP ───────────────────────────────────────────────────
   private _drawPickup(): void {
-    const g = this.bodyGfx; g.clear();
+    const g = new PIXI.Graphics();
+    this.bodyGfx.addChild(g);
     const W = this.W, H = this.H;
     const cabW = 95; // cab takes 95px from front
 
@@ -260,15 +245,26 @@ export class Vehicle {
 
   // ── WHEELS ───────────────────────────────────────────────────
   private _drawWheels(): void {
+    this.wheelFront.removeChildren();
+    this.wheelRear.removeChildren();
+
     const R = this.WR;
     const wheelColor = this.vehicleType === 'van' ? VAN_COLORS.wheel : this.vehicleType === 'jeep' ? JEEP_COLORS.wheel : PICKUP_COLORS.wheel;
     const hubColor = this.vehicleType === 'van' ? VAN_COLORS.wheelHub : this.vehicleType === 'jeep' ? JEEP_COLORS.wheelHub : PICKUP_COLORS.wheelHub;
     const spokeCount = this.vehicleType === 'jeep' ? 6 : 5;
 
-    [this.wheelFront, this.wheelRear].forEach((wg, i) => {
-      wg.clear();
-      // Draw everything at local (0,0) so it rotates around its own center
-      const localX = 0;
+    [this.wheelFront, this.wheelRear].forEach((container, i) => {
+      if (this.vehicleType === 'van') {
+        const sprite = PIXI.Sprite.from('assets/vehicles/van_orange_wheel.png');
+        sprite.anchor.set(0.5);
+        sprite.width = R * 2;
+        sprite.height = R * 2;
+        container.addChild(sprite);
+      } else {
+        const wg = new PIXI.Graphics();
+        container.addChild(wg);
+        // Draw everything at local (0,0) so it rotates around its own center
+        const localX = 0;
 
       // Tyre
       wg.beginFill(wheelColor); wg.drawCircle(localX, 0, R); wg.endFill();
@@ -284,17 +280,18 @@ export class Vehicle {
         }
         wg.lineStyle(0);
       }
-      // Hub
-      wg.beginFill(hubColor); wg.drawCircle(localX, 0, R * 0.55); wg.endFill();
-      wg.beginFill(0x444444); wg.drawCircle(localX, 0, R * 0.15); wg.endFill();
-      // Spokes
-      wg.lineStyle(2, 0xaaaaaa, 0.9);
-      for (let s = 0; s < spokeCount; s++) {
-        const a = (s / spokeCount) * Math.PI * 2;
-        wg.moveTo(0, 0);
-        wg.lineTo(Math.cos(a) * R * 0.5, Math.sin(a) * R * 0.5);
+        // Hub
+        wg.beginFill(hubColor); wg.drawCircle(localX, 0, R * 0.55); wg.endFill();
+        wg.beginFill(0x444444); wg.drawCircle(localX, 0, R * 0.15); wg.endFill();
+        // Spokes
+        wg.lineStyle(2, 0xaaaaaa, 0.9);
+        for (let s = 0; s < spokeCount; s++) {
+          const a = (s / spokeCount) * Math.PI * 2;
+          wg.moveTo(0, 0);
+          wg.lineTo(Math.cos(a) * R * 0.5, Math.sin(a) * R * 0.5);
+        }
+        wg.lineStyle(0);
       }
-      wg.lineStyle(0);
     });
   }
 
