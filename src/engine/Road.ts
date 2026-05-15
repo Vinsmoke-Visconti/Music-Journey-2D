@@ -12,6 +12,7 @@ export class Road {
   private app: PIXI.Application;
   private noiseOffset = 0;
   private puddles: { x: number; width: number }[] = [];
+  private lastEnvId: string = '';
 
   private readonly SEGMENT_WIDTH = 15; // Độ chi tiết của đường
   private readonly GROUND_THICKNESS = 250; // Độ dày cố định của mặt đất từ cạnh dưới màn hình
@@ -61,18 +62,10 @@ export class Road {
       amplitude = 10; // Hơi gồ ghề như đường mòn trong rừng
     }
 
-    // Tạo vũng nước ngẫu nhiên cho rừng rậm
-    if (envId === 'jungle') {
-      this.puddles = [];
-      const pudCount = 3 + Math.floor(Math.random() * 4); // 3-6 vũng
-      for (let i = 0; i < pudCount; i++) {
-        this.puddles.push({
-          x: 80 + Math.random() * (this.app.screen.width - 160),
-          width: 30 + Math.random() * 50,
-        });
-      }
-    } else {
-      this.puddles = [];
+    // Tạo vũng nước chỉ khi môi trường thay đổi (tránh flickering mỗi frame)
+    if (envId !== this.lastEnvId) {
+      this.lastEnvId = envId;
+      this._generatePuddles(envId);
     }
 
     for (let i = 0; i < count; i++) {
@@ -94,6 +87,20 @@ export class Road {
     this.noiseOffset += speed * 5;
     this.generatePoints(width, envId);
     this.draw(envId);
+  }
+
+  /** Tạo vũng nước cố định khi chuyển môi trường rừng */
+  private _generatePuddles(envId: string): void {
+    this.puddles = [];
+    if (envId !== 'jungle') return;
+    const count = 4 + Math.floor(Math.random() * 3); // 4-6 vũng cố định
+    const spacing = this.app.screen.width / count;
+    for (let i = 0; i < count; i++) {
+      this.puddles.push({
+        x: spacing * i + 40 + Math.random() * (spacing - 80),
+        width: 30 + Math.random() * 45,
+      });
+    }
   }
 
   draw(envId: string): void {
