@@ -235,7 +235,7 @@ export class Parallax {
     }
     // Let's use a deterministic approach instead of random inside the loop for snow to match mountain height
     // Hoặc lưu vào array
-    const mountains: {x: number, h: number}[] = [];
+    const mountains: { x: number, h: number }[] = [];
     for (let mx = 100; mx < 20000; mx += 250) {
       mountains.push({ x: mx, h: 180 + Math.random() * 70 });
     }
@@ -245,7 +245,7 @@ export class Parallax {
       mountainGfx.drawPolygon([m.x - 120, groundY - 20, m.x, groundY - m.h, m.x + 120, groundY - 20]);
     });
     mountainGfx.endFill();
-    
+
     mountainGfx.beginFill(0xffffff, 0.9);
     mountains.forEach(m => {
       mountainGfx.drawPolygon([m.x - 40, groundY - m.h + 60, m.x, groundY - m.h, m.x + 40, groundY - m.h + 60]);
@@ -276,7 +276,7 @@ export class Parallax {
 
     // Layer 1: Bầu trời xanh sáng (nhìn thấy qua kẽ lá) + Mặt trời
     const skyGfx = new PIXI.Graphics();
-    
+
     // Mặt trời
     const sunGfx = new PIXI.Graphics();
     const auraSteps = 20;
@@ -299,7 +299,7 @@ export class Parallax {
     sunGfx.beginFill(0xe64a19, 1); // Deep Red-Orange core
     sunGfx.drawCircle(0, 0, 38);
     sunGfx.endFill();
-    
+
     sunGfx.x = W * 0.7;
     sunGfx.y = groundY - 220;
     this.sunGfx = sunGfx;
@@ -342,7 +342,7 @@ export class Parallax {
       treeMidGfx.beginFill(0x4e342e, 1);       // Thân nâu sáng hơn (Double thickness: 20 -> 40)
       treeMidGfx.drawRect(tx - 20, groundY - th, 40, th);
       treeMidGfx.endFill();
-      treeMidGfx.beginFill(green, 1);             // Xanh lá 100% opacity
+      treeMidGfx.beginFill(green, 0.8);             // Xanh lá 100% opacity
       treeMidGfx.drawEllipse(tx, groundY - th, tw, tw * 0.65);
       treeMidGfx.drawEllipse(tx - 15, groundY - th + 25, tw * 0.7, tw * 0.5);
       treeMidGfx.drawEllipse(tx + 15, groundY - th + 25, tw * 0.75, tw * 0.5);
@@ -391,7 +391,7 @@ export class Parallax {
       const th = 160 + Math.random() * 80;
       const tw = 42 + Math.random() * 28;
       treeFgGfx.beginFill(0x3e2723, 1);        // Thân nâu đậm (Double thickness: 28 -> 56)
-      treeFgGfx.drawRect(tx - 28, groundY - th, 56, th);
+      treeFgGfx.drawRect(tx - 24, groundY - th, 48, th);
       treeFgGfx.endFill();
       treeFgGfx.beginFill(0x1b5e20, 1);        // Xanh lá đậm, 100% opacity
       treeFgGfx.drawEllipse(tx, groundY - th - 10, tw, tw * 0.6);
@@ -414,9 +414,9 @@ export class Parallax {
     const groundY = H - this.GROUND_THICKNESS;
 
     const groundColors: Record<string, [number, number]> = {
-      beach:  [0xf5d17a, 0xe8b84b],
+      beach: [0xf5d17a, 0xe8b84b],
       desert: [0xd4922a, 0xb87820],
-      snow:   [0xe8f4f8, 0xc8dce8],
+      snow: [0xe8f4f8, 0xc8dce8],
       jungle: [0x4a3728, 0x2e1e10], // Đất rừng ẩm màu nâu
     };
     const [gTop, gBot] = groundColors[env.id] ?? [0x4a7c3f, 0x2d5a2a];
@@ -433,7 +433,7 @@ export class Parallax {
   update(vehicleSpeed: number, progress: number = 0): void {
     this.currentProgress = progress;
     const W = this.app.screen.width;
-    
+
     // Cập nhật bầu trời theo thời gian
     this._drawSkyGradient();
 
@@ -445,7 +445,7 @@ export class Parallax {
       layer.offsetX -= vehicleSpeed * layer.scrollSpeed;
       if (layer.offsetX < -W * 1.5) layer.offsetX += W * 1.5;
       layer.gfx.x = layer.offsetX;
-      
+
       // Độ sáng của vật thể (núi, cây) giảm xuống khi về đêm (chỉ áp dụng cho môi trường không phải rừng)
       if (this.currentEnv && this.currentEnv.id !== 'jungle') {
         const nightFactor = Math.cos((this.currentProgress - 0.5) * Math.PI * 2) * 0.5 + 0.5;
@@ -453,7 +453,7 @@ export class Parallax {
       } else {
         layer.gfx.alpha = 1;
       }
-      
+
       // Dynamic y positioning based on current screen height
       layer.gfx.y = this.app.screen.height - this.GROUND_THICKNESS;
     });
