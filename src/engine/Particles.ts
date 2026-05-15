@@ -1,11 +1,11 @@
 // ============================================================
-// Particles.ts - Hệ thống hạt nâng cấp (Giai đoạn 3)
-// Hiệu ứng Bụi, Khói và Môi trường (Tuyết, Lá rơi)
+// Particles.ts - Hệ thống hạt nâng cấp
+// Music Journey 2D | Strategy Pattern Refactored
 // ============================================================
 
 import * as PIXI from 'pixi.js';
 
-type ParticleType = 'DUST' | 'SMOKE' | 'SNOW' | 'LEAF' | 'MUD' | 'WATER';
+export type ParticleType = 'DUST' | 'SMOKE' | 'SNOW' | 'LEAF' | 'MUD' | 'WATER';
 
 interface Particle {
   gfx: PIXI.Graphics;
@@ -25,7 +25,7 @@ export class Particles {
   private app: PIXI.Application;
   public container: PIXI.Container;
   private pool: Particle[] = [];
-  private readonly MAX = 180; // Tăng số lượng hạt lên một chút
+  private readonly MAX = 180;
   private dustColor: number = 0xd4b483;
   private smokeColor: number = 0x888888;
 
@@ -57,115 +57,36 @@ export class Particles {
     return this.pool.find(p => !p.active) ?? null;
   }
 
-  emitDust(x: number, y: number, speed: number): void {
-    const count = Math.floor(speed * 1.5);
-    for (let i = 0; i < count; i++) {
-      const p = this._getIdle();
-      if (!p) break;
-      p.active = true;
-      p.type = 'DUST';
-      p.gfx.visible = true;
-      p.gfx.x = x + (Math.random() - 0.5) * 10;
-      p.gfx.y = y;
-      // Bắn mạnh về phía sau (vx âm lớn hơn)
-      p.vx = -(speed * 3 + Math.random() * 4);
-      p.vy = -(Math.random() * 3);
-      p.life = 1.0;
-      p.decay = 0.03 + Math.random() * 0.04;
-      p.size = 1 + Math.random() * 2; // Hạt bụi nhỏ hơn
-      p.color = this.dustColor;
-      this._drawParticle(p);
+  emit(type: ParticleType, x: number, y: number, vx: number, vy: number, size: number, decay: number, color: number, rotationSpeed: number = 0): void {
+    const p = this._getIdle();
+    if (!p) return;
+    p.active = true;
+    p.type = type;
+    p.gfx.visible = true;
+    p.gfx.x = x;
+    p.gfx.y = y;
+    p.vx = vx;
+    p.vy = vy;
+    p.life = 1.0;
+    p.decay = decay;
+    p.size = size;
+    p.color = color;
+    p.rotationSpeed = rotationSpeed;
+    this._drawParticle(p);
+    
+    // Đảm bảo hạt mới lên trên nếu là khói
+    if (type === 'SMOKE') {
+      this.container.addChild(p.gfx);
     }
   }
 
   emitSmoke(x: number, y: number, speed: number): void {
     if (speed < 0.2) return;
-    const p = this._getIdle();
-    if (!p) return;
-    p.active = true;
-    p.type = 'SMOKE';
-    p.gfx.visible = true;
-    p.gfx.x = x;
-    p.gfx.y = y;
-    p.vx = -(Math.random() * 0.4 + 0.1);
-    p.vy = -(Math.random() * 0.8 + 0.4);
-    p.life = 1.0;
-    // Tốc độ phân rã để tồn tại khoảng 1.5s (90 frames)
-    p.decay = 0.009 + Math.random() * 0.004;
-    p.size = 5 + Math.random() * 7;
-    p.color = this.smokeColor;
-    this._drawParticle(p);
-    this.container.addChild(p.gfx); // Đảm bảo hạt mới lên trên
-  }
-
-  /** Bắn bùn và nước khi bánh xe đi qua vũng nước (Jungle) */
-  emitMudSplash(x: number, y: number, speed: number): void {
-    // Bùn: nặng, bắn chéo về sau
-    const mudCount = Math.floor(speed * 2);
-    for (let i = 0; i < mudCount; i++) {
-      const p = this._getIdle();
-      if (!p) break;
-      p.active = true;
-      p.type = 'MUD';
-      p.gfx.visible = true;
-      p.gfx.x = x + (Math.random() - 0.5) * 12;
-      p.gfx.y = y;
-      p.vx = -(speed * 2.5 + Math.random() * 3);
-      p.vy = -(Math.random() * 5 + 1);
-      p.life = 1.0;
-      p.decay = 0.04 + Math.random() * 0.04;
-      p.size = 2 + Math.random() * 3;
-      p.color = 0x6b4226;
-      this._drawParticle(p);
-    }
-    // Nước: nhẹ hơn, bắn cao hơn
-    const waterCount = Math.floor(speed * 3);
-    for (let i = 0; i < waterCount; i++) {
-      const p = this._getIdle();
-      if (!p) break;
-      p.active = true;
-      p.type = 'WATER';
-      p.gfx.visible = true;
-      p.gfx.x = x + (Math.random() - 0.5) * 20;
-      p.gfx.y = y;
-      p.vx = -(speed * 1.5 + Math.random() * 2) * (Math.random() > 0.5 ? 1 : -0.3);
-      p.vy = -(Math.random() * 7 + 2);
-      p.life = 1.0;
-      p.decay = 0.03 + Math.random() * 0.03;
-      p.size = 1 + Math.random() * 2;
-      p.color = 0x4fc3f7;
-      this._drawParticle(p);
-    }
-  }
-
-  emitAtmosphere(width: number, height: number, envId: string): void {
-    if (Math.random() > 0.15) return; // Không phát liên tục
-    const p = this._getIdle();
-    if (!p) return;
-
-    p.active = true;
-    p.gfx.visible = true;
-    p.gfx.x = Math.random() * width;
-    p.gfx.y = -20; // Xuất hiện từ phía trên màn hình
-
-    if (envId === 'snow') {
-      p.type = 'SNOW';
-      p.color = 0xffffff;
-      p.vx = (Math.random() - 0.2) * 1.5; // Gió thổi nhẹ
-      p.vy = Math.random() * 1.5 + 1.0;
-      p.size = 2 + Math.random() * 3;
-      p.decay = 0.005;
-    } else {
-      p.type = 'LEAF';
-      p.color = envId === 'desert' ? 0xd4a373 : 0xffcc88;
-      p.vx = -(Math.random() * 2 + 1);
-      p.vy = Math.random() * 1.2 + 0.5;
-      p.size = 3 + Math.random() * 4;
-      p.decay = 0.008;
-      p.rotationSpeed = (Math.random() - 0.5) * 0.1;
-    }
-    p.life = 1.0;
-    this._drawParticle(p);
+    const vx = -(Math.random() * 0.4 + 0.1);
+    const vy = -(Math.random() * 0.8 + 0.4);
+    const decay = 0.009 + Math.random() * 0.004;
+    const size = 5 + Math.random() * 7;
+    this.emit('SMOKE', x, y, vx, vy, size, decay, this.smokeColor);
   }
 
   private _drawParticle(p: Particle): void {
@@ -201,13 +122,13 @@ export class Particles {
         p.vy -= 0.04;
         p.vx *= 0.98;
       } else if (p.type === 'MUD') {
-        p.vy += 0.4;  // Rơi nhanh như bùn nặng
+        p.vy += 0.4;
         p.vx *= 0.94;
       } else if (p.type === 'WATER') {
-        p.vy += 0.25; // Nước rơi nhanh hơn bụi nhưng nhẹ hơn bùn
+        p.vy += 0.25;
         p.vx *= 0.97;
       } else if (p.type === 'SNOW') {
-        p.gfx.x += Math.sin(Date.now() * 0.002) * 0.5; // Lắc lư khi rơi
+        p.gfx.x += Math.sin(Date.now() * 0.002) * 0.5;
       } else if (p.type === 'LEAF') {
         p.gfx.rotation += p.rotationSpeed;
         p.gfx.x += Math.cos(Date.now() * 0.003) * 0.8;

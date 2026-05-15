@@ -20,6 +20,11 @@ import { processDemoPurchase } from './services/payment';
 let currentUser: any = null;
 let userInventory: string[] = []; 
 
+// Admin Mode check: All items unlocked if path is /admin or ?admin=true
+const isAdminMode = window.location.pathname.includes('/admin') || window.location.search.includes('admin=true');
+if (isAdminMode) {
+  console.log('[Admin] Mode Enabled: All items unlocked.');
+}
 // ─── 1. PixiJS ────────────────────────────────────────────────
 const app = new PIXI.Application({
   resizeTo:        window,
@@ -76,10 +81,12 @@ const albumArt      = document.getElementById('album-art')      as HTMLDivElemen
 // ─── 5. Playlist ──────────────────────────────────────────────
 const PLAYLIST = [
   { name: '🎵 Viper Beat (Original)', src: 'https://raw.githubusercontent.com/mdn/webaudio-examples/main/audio-analyser/viper.mp3' },
-  { name: '☀️ Summer Breeze (Bensound)', src: 'https://archive.org/download/bensound-summer/bensound-summer.mp3' }, // Archive.org link is more stable for CORS
-  { name: '☁️ Cloud 9 (Itro & Tobu)', src: 'https://raw.githubusercontent.com/Vinsmoke-Visconti/Music-Journey-2D/feature/complete-journey/public/assets/audio/itro-tobu-cloud-9.mp3' }, 
-  { name: '🎷 Funky Energy', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
-  { name: '🎸 Acoustic Vibe', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' },
+  { name: '🐉 Lạc Trôi - Sơn Tùng M-TP', src: './assets/audio/Lạc Trôi_Sơn Tùng M-TP_-1075806563.mp3' },
+  { name: '🎹 Giorno\'s Theme - JJBA', src: './assets/audio/JoJos Bizarre AdventureGolden Wind OST _Giornos Theme_ Il vento doro (Main Theme).mp3' },
+  { name: '🎵 comethru - Jeremy Zucker', src: './assets/audio/jeremy_zucker_comethru_288405.mp3' },
+  { name: '🌸 Nandemonaiya - Kimi no Na wa', src: './assets/audio/kimi_no_na_wa_nandemonaiya_kamishiraishi_mone_maxone_remix_198134.mp3' },
+  { name: '👹 Guren no Yumiya - AoT', src: './assets/audio/linked_horizon_guren_no_yumiya_attack_on_titan_full_opening_theme_783946.mp3' },
+  { name: '☀️ Summer Breeze (Bensound)', src: 'https://archive.org/download/bensound-summer/bensound-summer.mp3' },
 ];
 let trackIndex = 0;
 
@@ -108,9 +115,7 @@ function renderPlaylist(): void {
     item.innerHTML = `<span class="pl-num">${i + 1}</span> ${track.name}`;
     item.onclick = () => {
       loadTrack(i);
-      audioEl.play();
-      // Đồng bộ icon nút Play
-      playBtn.innerHTML = '<span class="icon">⏸</span>';
+      forcePlayAudio();
     };
     container.appendChild(item);
   });
@@ -124,6 +129,23 @@ function formatTime(s: number): string {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60).toString().padStart(2, '0');
   return `${m}:${sec}`;
+}
+
+function forcePlayAudio() {
+  if (!audio.isConnected()) {
+    try {
+      audio.connect(audioEl);
+    } catch (e) {
+      console.warn('[Audio] Context connection failed:', e);
+    }
+  }
+  audio.resume();
+  audioEl.play().catch(err => {
+    console.error('[Audio] Play error:', err);
+    showToast('❌ Không thể phát bài này. Thử bài khác nhé!');
+    playBtn.innerHTML = '<span class="icon">▶</span>';
+  });
+  playBtn.innerHTML = '<span class="icon">⏸</span>';
 }
 
 // ─── 6. Toast helper ──────────────────────────────────────────
@@ -172,13 +194,11 @@ audioEl.addEventListener('stalled', () => {
 
 prevBtn.addEventListener('click', () => {
   loadTrack(trackIndex - 1);
-  audioEl.play();
-  playBtn.innerHTML = '<span class="icon">⏸</span>';
+  forcePlayAudio();
 });
 nextBtn.addEventListener('click', () => {
   loadTrack(trackIndex + 1);
-  audioEl.play();
-  playBtn.innerHTML = '<span class="icon">⏸</span>';
+  forcePlayAudio();
 });
 
 volumeSlider.addEventListener('input', () => {
@@ -198,7 +218,7 @@ envSelect.addEventListener('change', () => {
   const newCfg = getEnvironmentById(newId)!;
 
   // Phase 5 Lock Check for Environment
-  const isUnlocked = !newCfg.isLocked || userInventory.includes(newId);
+  const isUnlocked = isAdminMode || !newCfg.isLocked || userInventory.includes(newId);
 
   if (!isUnlocked) {
     envSelect.value = currentEnvId;
@@ -214,7 +234,10 @@ envSelect.addEventListener('change', () => {
   currentEnvId = newId;
   currentEnv   = newCfg;
   parallax.loadEnvironment(currentEnv);
-  particles.setDustColor(currentEnv.particleColor);
+  const strategy = parallax.getCurrentStrategy();
+  if (strategy) {
+    particles.setDustColor(strategy.getDustColor().toString(16));
+  }
   road.draw(currentEnvId);
   if (audio.isConnected()) {
     audio.setLowpass(currentEnv.audioFilters.lowpass);
@@ -227,7 +250,7 @@ vehicleSelect.addEventListener('change', () => {
   const newCfg = getVehicleById(newId)!;
 
   // Phase 4 Lock Check
-  const isUnlocked = !newCfg.isLocked || userInventory.includes(newId);
+  const isUnlocked = isAdminMode || !newCfg.isLocked || userInventory.includes(newId);
 
   if (!isUnlocked) {
     // Revert select
@@ -254,7 +277,7 @@ vehicleSelect.addEventListener('change', () => {
 
 audioEl.addEventListener('ended', () => {
   loadTrack(trackIndex + 1);
-  audioEl.play();
+  forcePlayAudio();
 });
 
 // Sync album art animation
@@ -289,6 +312,7 @@ function _updateAuthUI() {
 initAuth();
 renderPlaylist(); // Khởi tạo danh sách nhạc
 loadTrack(0);
+updateSelectUI(); // Ensure UI reflects admin mode status immediately
 
 // --- Phase 5: Shop Logic ---
 async function openShop() {
@@ -334,7 +358,7 @@ function updateSelectUI() {
     Array.from(vSelect.options).forEach(opt => {
       const id = opt.value;
       const v = getVehicleById(id);
-      if (v && (!v.isLocked || userInventory.includes(id))) {
+      if (v && (isAdminMode || !v.isLocked || userInventory.includes(id))) {
         opt.textContent = opt.textContent!.replace('🔒 ', '').replace(' 🔒', '').replace('🔒', '').split(' – ')[0].trim();
         const icon = vIcons[id] || '✅';
         // Tránh lặp lại icon nếu đã có
@@ -350,7 +374,7 @@ function updateSelectUI() {
     Array.from(eSelect.options).forEach(opt => {
       const id = opt.value;
       const e = getEnvironmentById(id);
-      if (e && (!e.isLocked || userInventory.includes(id))) {
+      if (e && (isAdminMode || !e.isLocked || userInventory.includes(id))) {
         opt.textContent = opt.textContent!.replace('🔒 ', '').replace(' 🔒', '').replace('🔒', '').split(' – ')[0].trim();
         const icon = eIcons[id] || '✅';
         if (!opt.textContent.includes(icon)) {
@@ -411,19 +435,22 @@ app.ticker.add(() => {
   if (spd > 0.3) {
     const wPos = vehicle.getWheelFrontWorldPos();
     const gY   = road.getGroundYAt(wPos.x);
-    // Kiểm tra vũng nước (Jungle) - thống nhất với vị trí thực của bánh trước
-    if (currentEnvId === 'jungle' && road.getPuddleAt(wPos.x)) {
-      particles.emitMudSplash(wPos.x, gY, spd);
-    } else {
-      particles.emitDust(wPos.x, gY, spd);
+    
+    const strategy = parallax.getCurrentStrategy();
+    if (strategy) {
+      strategy.emitGroundSplash(wPos.x, gY, spd, road.getPuddleAt(wPos.x), particles.emit.bind(particles));
     }
+
     if (frameCount % 3 === 0) {
       const ePos = vehicle.getExhaustWorldPos();
       particles.emitSmoke(ePos.x, ePos.y, spd);
     }
   }
   // Atmospheric effects (Snow, Leaves, etc.)
-  particles.emitAtmosphere(app.screen.width, app.screen.height, currentEnvId);
+  const strategy = parallax.getCurrentStrategy();
+  if (strategy) {
+    strategy.emitAtmosphere(app.screen.width, particles.emit.bind(particles));
+  }
   particles.update();
 
   // Camera shake on bass kick

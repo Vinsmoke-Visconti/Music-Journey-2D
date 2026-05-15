@@ -1,32 +1,14 @@
 // ============================================================
-// Vehicle.ts - FSM + Physics + 3 Vehicle Types (Van/Jeep/Pickup)
-// Music Journey 2D | Giai đoạn 2: Hoàn thiện
+// Vehicle.ts - FSM + Physics
+// Music Journey 2D | Strategy Pattern Refactored
 // ============================================================
 
 import * as PIXI from 'pixi.js';
 import type { Vehicle as VehicleConfig } from '../configs/vehicles';
+import { VehicleStrategy } from './strategies/VehicleStrategy';
+import { getVehicleStrategy } from './strategies/VehicleRegistry';
 
 export type VehicleState = 'IDLE' | 'ACCELERATING' | 'CRUISING' | 'BRAKING';
-
-// ── Colour palettes ───────────────────────────────────────────
-const VAN_COLORS = {
-  body: 0xe8742a, bodyAccent: 0xd4601a, roof: 0xc45010,
-  window: 0x7ec8e3, windowFrame: 0x333333,
-  wheel: 0x222222, wheelHub: 0x888888, stripe: 0xf9c74f,
-  bumper: 0x555555, light: 0xffee88, exhaust: 0x666666,
-};
-const JEEP_COLORS = {
-  body: 0x4d5b45, bodyAccent: 0x3a4434, roof: 0x2c3328,
-  window: 0x8ecae6, windowFrame: 0x1a1a1a,
-  wheel: 0x1a1a1a, wheelHub: 0x666655, roofRack: 0x555544,
-  light: 0xffee88, bumper: 0x222222,
-};
-const PICKUP_COLORS = {
-  body: 0x1e3a5f, bodyAccent: 0x152b47, roof: 0x102035,
-  window: 0x7ec8e3, windowFrame: 0x111111,
-  wheel: 0x1a1a1a, wheelHub: 0x888888,
-  bed: 0x162d4a, light: 0xffee88, bumper: 0x444444,
-};
 
 export class Vehicle {
   public container: PIXI.Container;
@@ -38,6 +20,7 @@ export class Vehicle {
   private app: PIXI.Application;
   private config: VehicleConfig;
   private vehicleType: string;
+  private strategy: VehicleStrategy;
 
   // Dimensions (per vehicle)
   private W = 140; private H = 60; private WR = 20;
@@ -58,6 +41,8 @@ export class Vehicle {
 
   // Wheel
   private wheelAngle = 0;
+
+  // Misc
   private idleTime = 0;
   private bumpForce = 0;
 
@@ -65,6 +50,8 @@ export class Vehicle {
     this.app = app;
     this.config = config;
     this.vehicleType = config.id;
+    this.strategy = getVehicleStrategy(this.vehicleType);
+
     this._setDimensions();
 
     this.container = new PIXI.Container();
@@ -78,8 +65,8 @@ export class Vehicle {
     this.suspensionContainer.addChild(this.wheelFront);
     this.suspensionContainer.addChild(this.bodyGfx);
 
-    this._drawBody();
-    this._drawWheels();
+    this.strategy.drawBody(this.bodyGfx);
+    this.strategy.drawWheels(this.wheelFront, this.wheelRear, this.WR);
 
     this.container.x = app.screen.width * 0.28;
     this.container.y = app.screen.height * 0.68;
@@ -87,231 +74,12 @@ export class Vehicle {
   }
 
   private _setDimensions(): void {
-    switch (this.vehicleType) {
-      case 'jeep':
-        this.W = 148; this.H = 65; this.WR = 24;
-        this.wFrontX = this.W / 2 - 28;
-        this.wRearX = -this.W / 2 + 28;
-        break;
-      case 'pickup':
-        this.W = 175; this.H = 56; this.WR = 22;
-        this.wFrontX = this.W / 2 - 32;
-        this.wRearX = -this.W / 2 + 42;
-        break;
-      case 'van':
-        const scale = 1.5; // Hệ số phóng to x lần
-        this.W = 140 * scale;
-        this.H = 60 * scale;
-        this.WR = 12 * scale; // Bánh xe cũng sẽ to lên theo
-        this.wFrontX = (this.W / 2 - 75);
-        this.wRearX = (-this.W / 2 + 60);
-        break;
-      default: // van
-        this.W = 140; this.H = 60;
-        this.WR = 16;
-        this.wFrontX = this.W / 2 - 28;
-        this.wRearX = -this.W / 2 + 28;
-    }
-  }
-
-  private _drawBody(): void {
-    this.bodyGfx.removeChildren();
-    switch (this.vehicleType) {
-      case 'jeep': this._drawJeep(); break;
-      case 'pickup': this._drawPickup(); break;
-      default: this._drawVan(); break;
-    }
-  }
-
-  // ── VAN ──────────────────────────────────────────────────────
-  private _drawVan(): void {
-    // Ưu tiên dùng hình ảnh nếu là Van
-    const sprite = PIXI.Sprite.from('assets/vehicles/vehicle_vans_no_wheel.png');
-    sprite.anchor.set(0.5, 1);
-    // Scale sprite để khớp với kích thước thiết kế (W=140, H=60)
-
-    sprite.width = this.W;
-    sprite.height = this.H;
-    this.bodyGfx.addChild(sprite);
-
-    // Giữ lại các hiệu ứng vẽ bằng Graphics nếu cần
-    const g = new PIXI.Graphics();
-    this.bodyGfx.addChild(g);
-  }
-
-  // ── JEEP ─────────────────────────────────────────────────────
-  private _drawJeep(): void {
-    const g = new PIXI.Graphics();
-    this.bodyGfx.addChild(g);
-    const W = this.W, H = this.H;
-
-    // Body
-    g.beginFill(JEEP_COLORS.body); g.drawRoundedRect(-W / 2, -H, W, H, 4); g.endFill();
-    g.beginFill(JEEP_COLORS.bodyAccent, 0.5); g.drawRoundedRect(-W / 2, -H / 2, W, H / 2, 4); g.endFill();
-    // Flat roof
-    g.beginFill(JEEP_COLORS.roof); g.drawRect(-W / 2 + 6, -H, W - 12, 32); g.endFill();
-    // Roof rack rails
-    g.lineStyle(3, JEEP_COLORS.roofRack, 0.9);
-    g.moveTo(-W / 2 + 10, -H + 2); g.lineTo(W / 2 - 10, -H + 2);
-    g.moveTo(-W / 2 + 10, -H + 6); g.lineTo(W / 2 - 10, -H + 6);
-    for (let cx = -W / 2 + 22; cx < W / 2 - 10; cx += 24) {
-      g.moveTo(cx, -H + 1); g.lineTo(cx, -H + 7);
-    }
-    g.lineStyle(0);
-
-    // Windshield (upright)
-    g.beginFill(JEEP_COLORS.windowFrame); g.drawRect(W / 2 - 48, -H + 2, 42, 30); g.endFill();
-    g.beginFill(JEEP_COLORS.window, 0.8); g.drawRect(W / 2 - 46, -H + 4, 38, 26); g.endFill();
-    g.beginFill(0xffffff, 0.15); g.drawRect(W / 2 - 45, -H + 5, 10, 12); g.endFill();
-    // Side window
-    g.beginFill(JEEP_COLORS.windowFrame); g.drawRect(-W / 2 + 10, -H + 2, 52, 30); g.endFill();
-    g.beginFill(JEEP_COLORS.window, 0.75); g.drawRect(-W / 2 + 12, -H + 4, 48, 26); g.endFill();
-    g.beginFill(0xffffff, 0.12); g.drawRect(-W / 2 + 14, -H + 5, 12, 11); g.endFill();
-
-    // Front grille
-    g.beginFill(0x1a1a1a); g.drawRoundedRect(W / 2 - 6, -H + 4, 12, 22, 2); g.endFill();
-    g.lineStyle(1.5, 0x333333);
-    for (let gy = -H + 7; gy < -H + 24; gy += 4) { g.moveTo(W / 2 - 5, gy); g.lineTo(W / 2 + 5, gy); }
-    g.lineStyle(0);
-
-    // Round headlights
-    g.beginFill(JEEP_COLORS.light, 0.95); g.drawCircle(W / 2 + 2, -H + 14, 6); g.endFill();
-    g.beginFill(0xffffff, 0.6); g.drawCircle(W / 2 + 1, -H + 13, 3); g.endFill();
-    // Taillight
-    g.beginFill(0xff3333); g.drawRoundedRect(-W / 2 - 4, -H + 8, 8, 14, 2); g.endFill();
-    // Bumpers
-    g.beginFill(JEEP_COLORS.bumper);
-    g.drawRect(W / 2 - 4, -H + 26, 12, 10);
-    g.drawRect(-W / 2 - 6, -H + 26, 12, 10);
-    g.endFill();
-    // Spare tire on back
-    g.beginFill(JEEP_COLORS.wheel); g.drawCircle(-W / 2 - 10, -H + 18, 13); g.endFill();
-    g.beginFill(0x555544); g.drawCircle(-W / 2 - 10, -H + 18, 7); g.endFill();
-    g.beginFill(0x222211); g.drawCircle(-W / 2 - 10, -H + 18, 2.5); g.endFill();
-    // Tow hook
-    g.lineStyle(3, 0x444444);
-    g.moveTo(W / 2 + 8, -H + 28); g.lineTo(W / 2 + 12, -H + 28); g.lineTo(W / 2 + 12, -H + 34);
-    g.lineStyle(0);
-  }
-
-  // ── PICKUP ───────────────────────────────────────────────────
-  private _drawPickup(): void {
-    const g = new PIXI.Graphics();
-    this.bodyGfx.addChild(g);
-    const W = this.W, H = this.H;
-    const cabW = 95; // cab takes 95px from front
-
-    // Flatbed (rear, lower)
-    g.beginFill(PICKUP_COLORS.bed); g.drawRoundedRect(-W / 2, -H + 14, W - cabW + 10, H - 14, 3); g.endFill();
-    // Bed inner floor
-    g.beginFill(PICKUP_COLORS.bed); g.drawRect(-W / 2 + 4, -H + 18, W - cabW + 2, H - 22); g.endFill();
-    // Bed side rails
-    g.lineStyle(3, PICKUP_COLORS.bodyAccent, 1);
-    g.moveTo(-W / 2 + 2, -H + 14); g.lineTo(-W / 2 + 2, -H + 4);
-    g.lineStyle(0);
-    // Roll bar
-    g.lineStyle(5, 0x334455, 1);
-    g.moveTo(-W / 2 + W - cabW - 8, -H + 14); g.lineTo(-W / 2 + W - cabW - 8, -H - 8);
-    g.moveTo(-W / 2 + W - cabW - 28, -H + 14); g.lineTo(-W / 2 + W - cabW - 28, -H - 8);
-    g.moveTo(-W / 2 + W - cabW - 8, -H - 8); g.lineTo(-W / 2 + W - cabW - 28, -H - 8);
-    g.lineStyle(0);
-
-    // Cab body
-    const cabX = W / 2 - cabW;
-    g.beginFill(PICKUP_COLORS.body); g.drawRoundedRect(cabX, -H, cabW, H, 5); g.endFill();
-    g.beginFill(PICKUP_COLORS.bodyAccent, 0.45); g.drawRoundedRect(cabX, -H / 2, cabW, H / 2, 5); g.endFill();
-    // Cab roof (slight slope)
-    g.beginFill(PICKUP_COLORS.roof);
-    g.moveTo(cabX + 5, -H); g.lineTo(cabX + cabW - 8, -H);
-    g.lineTo(cabX + cabW - 2, -H + 26); g.lineTo(cabX, -H + 26);
-    g.closePath(); g.endFill();
-
-    // Windshield
-    g.beginFill(PICKUP_COLORS.windowFrame); g.drawRoundedRect(cabX + cabW - 48, -H + 2, 42, 26, 3); g.endFill();
-    g.beginFill(PICKUP_COLORS.window, 0.82); g.drawRoundedRect(cabX + cabW - 46, -H + 4, 38, 22, 2); g.endFill();
-    g.beginFill(0xffffff, 0.15); g.drawRect(cabX + cabW - 45, -H + 5, 10, 10); g.endFill();
-    // Side window
-    g.beginFill(PICKUP_COLORS.windowFrame); g.drawRoundedRect(cabX + 8, -H + 2, 35, 26, 3); g.endFill();
-    g.beginFill(PICKUP_COLORS.window, 0.78); g.drawRoundedRect(cabX + 10, -H + 4, 31, 22, 2); g.endFill();
-    g.beginFill(0xffffff, 0.12); g.drawRect(cabX + 12, -H + 5, 9, 10); g.endFill();
-
-    // Headlight
-    g.beginFill(PICKUP_COLORS.light); g.drawRoundedRect(W / 2 - 8, -H + 8, 10, 9, 2); g.endFill();
-    g.beginFill(0xffffff, 0.5); g.drawRoundedRect(W / 2 - 7, -H + 9, 7, 6, 1); g.endFill();
-    // DRL strip
-    g.lineStyle(2, PICKUP_COLORS.light, 0.7);
-    g.moveTo(W / 2 - 8, -H + 7); g.lineTo(W / 2 - 8, -H + 19);
-    g.lineStyle(0);
-    // Taillight
-    g.beginFill(0xff3333); g.drawRoundedRect(-W / 2 - 2, -H + 20, 6, 14, 2); g.endFill();
-    // Front bumper
-    g.beginFill(PICKUP_COLORS.bumper); g.drawRoundedRect(W / 2 - 6, -H + 20, 10, 14, 2); g.endFill();
-    // Rear bumper
-    g.beginFill(PICKUP_COLORS.bumper); g.drawRoundedRect(-W / 2 - 4, -H + 24, 10, 10, 2); g.endFill();
-    // Toolbox in bed
-    g.beginFill(0x334466); g.drawRoundedRect(-W / 2 + W - cabW - 24, -H + 19, 30, 12, 2); g.endFill();
-    g.lineStyle(1, 0x445577); g.moveTo(-W / 2 + W - cabW - 10, -H + 19); g.lineTo(-W / 2 + W - cabW - 10, -H + 31); g.lineStyle(0);
-  }
-
-  // ── WHEELS ───────────────────────────────────────────────────
-  private _drawWheels(): void {
-    this.wheelFront.removeChildren();
-    this.wheelRear.removeChildren();
-
-    const R = this.WR;
-    const wheelColor = this.vehicleType === 'van' ? VAN_COLORS.wheel : this.vehicleType === 'jeep' ? JEEP_COLORS.wheel : PICKUP_COLORS.wheel;
-    const hubColor = this.vehicleType === 'van' ? VAN_COLORS.wheelHub : this.vehicleType === 'jeep' ? JEEP_COLORS.wheelHub : PICKUP_COLORS.wheelHub;
-    const spokeCount = this.vehicleType === 'jeep' ? 6 : 5;
-
-    [this.wheelFront, this.wheelRear].forEach((container, i) => {
-      if (this.vehicleType === 'van') {
-        const sprite = PIXI.Sprite.from('assets/vehicles/van_orange_wheel.png');
-
-        // Đảm bảo anchor luôn là 0.5 để xoay quanh tâm
-        sprite.anchor.set(0.5);
-
-        // Căn chỉnh vị trí của Sprite trong Container về 0,0
-        sprite.x = 0;
-        sprite.y = 0;
-
-        sprite.width = R * 2;
-        sprite.height = R * 2;
-
-        container.addChild(sprite);
-
-      } else {
-        const wg = new PIXI.Graphics();
-        container.addChild(wg);
-        // Draw everything at local (0,0) so it rotates around its own center
-        const localX = 0;
-
-        // Tyre
-        wg.beginFill(wheelColor); wg.drawCircle(localX, 0, R); wg.endFill();
-        wg.lineStyle(this.vehicleType === 'jeep' ? 4 : 3, 0x111111); wg.drawCircle(localX, 0, R); wg.lineStyle(0);
-
-        // Tread detail for Jeep
-        if (this.vehicleType === 'jeep') {
-          wg.lineStyle(2, 0x111111, 0.5);
-          for (let t = 0; t < 8; t++) {
-            const a = (t / 8) * Math.PI * 2;
-            wg.moveTo(Math.cos(a) * (R - 3), Math.sin(a) * (R - 3));
-            wg.lineTo(Math.cos(a) * R, Math.sin(a) * R);
-          }
-          wg.lineStyle(0);
-        }
-        // Hub
-        wg.beginFill(hubColor); wg.drawCircle(localX, 0, R * 0.55); wg.endFill();
-        wg.beginFill(0x444444); wg.drawCircle(localX, 0, R * 0.15); wg.endFill();
-        // Spokes
-        wg.lineStyle(2, 0xaaaaaa, 0.9);
-        for (let s = 0; s < spokeCount; s++) {
-          const a = (s / spokeCount) * Math.PI * 2;
-          wg.moveTo(0, 0);
-          wg.lineTo(Math.cos(a) * R * 0.5, Math.sin(a) * R * 0.5);
-        }
-        wg.lineStyle(0);
-      }
-    });
+    const dims = this.strategy.getDimensions();
+    this.W = dims.W;
+    this.H = dims.H;
+    this.WR = dims.WR;
+    this.wFrontX = dims.wFrontX;
+    this.wRearX = dims.wRearX;
   }
 
   private _updateWheelPositions(): void {

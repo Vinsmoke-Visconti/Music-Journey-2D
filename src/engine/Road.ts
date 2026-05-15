@@ -1,9 +1,10 @@
 // ============================================================
-// Road.ts - Procedural Road with Perlin Noise (Giai đoạn 3)
-// Music Journey 2D | Infinite Terrain Generation
+// Road.ts - Procedural Road with Perlin Noise
+// Music Journey 2D | Strategy Pattern Refactored
 // ============================================================
 
 import * as PIXI from 'pixi.js';
+import { getMapStrategy } from './strategies/MapRegistry';
 
 export class Road {
   private container: PIXI.Container;
@@ -54,18 +55,13 @@ export class Road {
     this.points = [];
     const count = Math.ceil(width / this.SEGMENT_WIDTH) + 5;
     
-    // Giảm độ gồ ghề cho Beach và Desert theo yêu cầu (giảm thêm 50% nữa)
-    let amplitude = 15;
-    if (envId === 'beach' || envId === 'desert') {
-      amplitude = 3.75;
-    } else if (envId === 'jungle') {
-      amplitude = 10; // Hơi gồ ghề như đường mòn trong rừng
-    }
+    const strategy = getMapStrategy(envId);
+    const config = strategy.getRoadConfig();
 
-    // Tạo vũng nước chỉ khi môi trường thay đổi (tránh flickering mỗi frame)
+    // Tạo vũng nước chỉ khi môi trường thay đổi
     if (envId !== this.lastEnvId) {
       this.lastEnvId = envId;
-      this._generatePuddles(envId);
+      this.puddles = strategy.generatePuddles(this.app.screen.width);
     }
 
     for (let i = 0; i < count; i++) {
@@ -74,7 +70,7 @@ export class Road {
       const n2 = this.getNoise((x + this.noiseOffset) * 2.5) * 0.4;
       const n3 = this.getNoise((x + this.noiseOffset) * 0.5) * 2.0;
       
-      const noiseY = (n1 + n2 + n3) * amplitude;
+      const noiseY = (n1 + n2 + n3) * config.amplitude;
       
       this.points.push({
         x: x,
@@ -87,14 +83,12 @@ export class Road {
     this.noiseOffset += speed * 5;
 
     // Move puddles backwards to match road movement
-    if (envId === 'jungle') {
-      for (const pud of this.puddles) {
-        pud.x -= speed * 5;
-        // Loop puddles back to the right when they go off-screen left
-        if (pud.x + pud.width < -100) {
-          pud.x = width + Math.random() * 200;
-          pud.width = 30 + Math.random() * 45;
-        }
+    for (const pud of this.puddles) {
+      pud.x -= speed * 5;
+      // Loop puddles back to the right when they go off-screen left
+      if (pud.x + pud.width < -100) {
+        pud.x = width + Math.random() * 200;
+        pud.width = 30 + Math.random() * 45;
       }
     }
 
@@ -102,41 +96,15 @@ export class Road {
     this.draw(envId);
   }
 
-  /** Tạo vũng nước cố định khi chuyển môi trường rừng */
-  private _generatePuddles(envId: string): void {
-    this.puddles = [];
-    if (envId !== 'jungle') return;
-    const count = 4 + Math.floor(Math.random() * 3); // 4-6 vũng cố định
-    const spacing = this.app.screen.width / count;
-    for (let i = 0; i < count; i++) {
-      this.puddles.push({
-        x: spacing * i + 40 + Math.random() * (spacing - 80),
-        width: 30 + Math.random() * 45,
-      });
-    }
-  }
-
   draw(envId: string): void {
     const g = this.gfx;
     g.clear();
 
-    // Chọn màu đường dựa trên môi trường
-    let roadColor = 0x555555; // Mặc định: Nhựa đường
-    let lineColor = 0xfff176; // Mặc định: Vạch vàng
+    const strategy = getMapStrategy(envId);
+    const config = strategy.getRoadConfig();
 
-    if (envId === 'desert') {
-      roadColor = 0xd4a373;
-      lineColor = 0xfaedcd;
-    } else if (envId === 'snow') {
-      roadColor = 0xa2d2ff;
-      lineColor = 0xffffff;
-    } else if (envId === 'jungle') {
-      roadColor = 0x5a3e28; // Đất rừng ẩm
-      lineColor = 0x4caf50; // Vạch cỏ xanh
-    }
-
-    // Vẽ phần dưới của mặt đất (vẽ dư xuống 1000px để không bị lộ nền)
-    g.beginFill(roadColor);
+    // Vẽ phần dưới của mặt đất
+    g.beginFill(config.roadColor);
     g.moveTo(0, this.app.screen.height + 1000);
     for (const p of this.points) {
       g.lineTo(p.x, p.y);
@@ -145,23 +113,11 @@ export class Road {
     g.lineTo(lastX, this.app.screen.height + 1000);
     g.endFill();
 
-    // Vẽ vũng nước (Jungle)
-    if (envId === 'jungle') {
-      for (const pud of this.puddles) {
-        const groundY = this.getGroundYAt(pud.x + pud.width / 2);
-        // Bóng nước tối
-        g.beginFill(0x2a5298, 0.55);
-        g.drawEllipse(pud.x + pud.width / 2, groundY - 3, pud.width / 2, 5);
-        g.endFill();
-        // Ánh sáng phản chiếu trên mặt nước
-        g.beginFill(0x7ec8e3, 0.3);
-        g.drawEllipse(pud.x + pud.width / 2 - 5, groundY - 4, pud.width / 4, 2);
-        g.endFill();
-      }
-    }
+    // Vẽ trang trí (ví dụ: vũng nước cho Jungle)
+    strategy.drawRoadDecorations(g, this.puddles, this.getGroundYAt.bind(this));
 
     // Vẽ vạch kẻ đường (vạch đứt)
-    g.lineStyle(3, lineColor, 0.6);
+    g.lineStyle(3, config.lineColor, 0.6);
     for (let i = 0; i < this.points.length - 2; i += 4) {
       const p = this.points[i];
       const pNext = this.points[i + 1];
