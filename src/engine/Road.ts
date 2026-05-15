@@ -85,6 +85,19 @@ export class Road {
 
   update(speed: number, width: number, envId: string): void {
     this.noiseOffset += speed * 5;
+
+    // Move puddles backwards to match road movement
+    if (envId === 'jungle') {
+      for (const pud of this.puddles) {
+        pud.x -= speed * 5;
+        // Loop puddles back to the right when they go off-screen left
+        if (pud.x + pud.width < -100) {
+          pud.x = width + Math.random() * 200;
+          pud.width = 30 + Math.random() * 45;
+        }
+      }
+    }
+
     this.generatePoints(width, envId);
     this.draw(envId);
   }

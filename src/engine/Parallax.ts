@@ -271,7 +271,7 @@ export class Parallax {
   }
 
   private _buildJungleLayers(W: number, H: number): void {
-    const groundY = H - this.GROUND_THICKNESS;
+    const groundY = 0;
 
     // Layer 1: Bầu trời xanh sáng (nhìn thấy qua kẽ lá) + Mặt trời
     const skyGfx = new PIXI.Graphics();
