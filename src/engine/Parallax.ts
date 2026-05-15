@@ -60,6 +60,8 @@ export class Parallax {
       this._buildDesertLayers(W, H);
     } else if (env.id === 'snow') {
       this._buildSnowLayers(W, H);
+    } else if (env.id === 'jungle') {
+      this._buildJungleLayers(W, H);
     }
 
     // Thêm layers vào stage (sau skyGfx, trước road/vehicle)
@@ -246,6 +248,118 @@ export class Parallax {
     this.layers.push({ gfx: treeGfx, scrollSpeed: 0.7, offsetX: 0, color: 0, y: 0, h: 0 });
   }
 
+  private _buildJungleLayers(W: number, H: number): void {
+    const groundY = H - this.GROUND_THICKNESS;
+
+    // Layer 1: Bầu trời xanh sáng (nhìn thấy qua kẽ lá) + Mặt trời
+    const skyGfx = new PIXI.Graphics();
+    // Mặt trời
+    skyGfx.beginFill(0xffe066, 0.9);
+    skyGfx.drawCircle(W * 0.7, groundY - 220, 38);
+    skyGfx.endFill();
+    skyGfx.beginFill(0xfff4a3, 0.3);
+    skyGfx.drawCircle(W * 0.7, groundY - 220, 58);
+    skyGfx.endFill();
+    // Vài đám mây trắng nhỏ nhìn qua tán cây
+    for (let cx = 0; cx < 25000; cx += 380 + Math.random() * 200) {
+      const cy = groundY - 200 - Math.random() * 80;
+      skyGfx.beginFill(0xffffff, 0.7);
+      skyGfx.drawEllipse(cx, cy, 55, 18);
+      skyGfx.endFill();
+    }
+    this.layers.push({ gfx: skyGfx, scrollSpeed: 0.05, offsetX: 0, color: 0, y: 0, h: 0 });
+
+    // Layer 2: Cây rừng xa (mờ, scroll chậm)
+    const treeFarGfx = new PIXI.Graphics();
+    for (let tx = -500; tx < 25000; tx += 55 + Math.random() * 40) {
+      const th = 110 + Math.random() * 80;
+      const tw = 22 + Math.random() * 18;
+      // Thân cây
+      treeFarGfx.beginFill(0x2d4a1e, 0.6);
+      treeFarGfx.drawRect(tx - 4, groundY - th, 8, th);
+      treeFarGfx.endFill();
+      // Tán lá oval
+      treeFarGfx.beginFill(0x1a3d12, 0.55);
+      treeFarGfx.drawEllipse(tx, groundY - th, tw, tw * 0.6);
+      treeFarGfx.endFill();
+    }
+    this.layers.push({ gfx: treeFarGfx, scrollSpeed: 0.2, offsetX: 0, color: 0, y: 0, h: 0 });
+
+    // Layer 3: Cây rừng giữa (dày, có động vật)
+    const treeMidGfx = new PIXI.Graphics();
+    const animalPositions: number[] = [];
+    for (let tx = -400; tx < 25000; tx += 35 + Math.random() * 30) {
+      const th = 130 + Math.random() * 100;
+      const tw = 28 + Math.random() * 22;
+      const green = Math.random() > 0.5 ? 0x2d6a4f : 0x3a7d44;
+      treeMidGfx.beginFill(0x3b2507, 0.9);
+      treeMidGfx.drawRect(tx - 5, groundY - th, 10, th);
+      treeMidGfx.endFill();
+      treeMidGfx.beginFill(green, 0.85);
+      treeMidGfx.drawEllipse(tx, groundY - th, tw, tw * 0.65);
+      treeMidGfx.drawEllipse(tx - 10, groundY - th + 20, tw * 0.7, tw * 0.5);
+      treeMidGfx.drawEllipse(tx + 10, groundY - th + 22, tw * 0.75, tw * 0.5);
+      treeMidGfx.endFill();
+      // Chọn vị trí đặt động vật ngẫu nhiên (khoảng 1/18)
+      if (Math.random() < 0.055) animalPositions.push(tx);
+    }
+
+    // Vẽ khỉ trên cành cây
+    animalPositions.forEach((ax, idx) => {
+      if (idx % 2 === 0) {
+        // Khỉ: oval thân + đầu + đuôi
+        const ay = groundY - 150 - Math.random() * 60;
+        treeMidGfx.beginFill(0x8b5e3c);
+        treeMidGfx.drawEllipse(ax, ay, 9, 7);       // Thân
+        treeMidGfx.drawCircle(ax + 10, ay - 7, 6);  // Đầu
+        treeMidGfx.endFill();
+        treeMidGfx.beginFill(0xf0c080);
+        treeMidGfx.drawEllipse(ax + 12, ay - 7, 3, 2.5); // Mặt
+        treeMidGfx.endFill();
+        // Đuôi cong
+        treeMidGfx.lineStyle(2, 0x6b3d1c, 1);
+        treeMidGfx.moveTo(ax - 9, ay);
+        treeMidGfx.bezierCurveTo(ax - 20, ay + 8, ax - 22, ay - 5, ax - 18, ay - 10);
+        treeMidGfx.lineStyle(0);
+      } else {
+        // Chim vẹt: hình tam giác màu sắc
+        const ay = groundY - 160 - Math.random() * 70;
+        const colors = [0xe63946, 0x06d6a0, 0xffb703, 0x118ab2];
+        const c = colors[Math.floor(Math.random() * colors.length)];
+        treeMidGfx.beginFill(c, 0.95);
+        treeMidGfx.drawPolygon([ax, ay - 14, ax - 7, ay + 6, ax + 7, ay + 6]); // Cánh
+        treeMidGfx.endFill();
+        treeMidGfx.beginFill(0x222222);
+        treeMidGfx.drawCircle(ax + 5, ay - 10, 2.5);  // Mắt
+        treeMidGfx.endFill();
+        treeMidGfx.beginFill(0xffb703);
+        treeMidGfx.drawPolygon([ax + 6, ay - 10, ax + 12, ay - 8, ax + 6, ay - 6]); // Mỏ
+        treeMidGfx.endFill();
+      }
+    });
+    this.layers.push({ gfx: treeMidGfx, scrollSpeed: 0.5, offsetX: 0, color: 0, y: 0, h: 0 });
+
+    // Layer 4: Cây tiền cảnh (sát nhất, tán lá to)
+    const treeFgGfx = new PIXI.Graphics();
+    for (let tx = -300; tx < 25000; tx += 70 + Math.random() * 50) {
+      const th = 160 + Math.random() * 80;
+      const tw = 42 + Math.random() * 28;
+      treeFgGfx.beginFill(0x1b2e10, 0.95);
+      treeFgGfx.drawRect(tx - 7, groundY - th, 14, th);
+      treeFgGfx.endFill();
+      treeFgGfx.beginFill(0x1a4d2e, 0.9);
+      treeFgGfx.drawEllipse(tx, groundY - th - 10, tw, tw * 0.6);
+      treeFgGfx.drawEllipse(tx - 18, groundY - th + 18, tw * 0.6, tw * 0.45);
+      treeFgGfx.drawEllipse(tx + 20, groundY - th + 20, tw * 0.65, tw * 0.45);
+      treeFgGfx.endFill();
+      // Dương xỉ / cỏ rừng dưới gốc
+      treeFgGfx.beginFill(0x2d5a1b, 0.7);
+      treeFgGfx.drawEllipse(tx, groundY - 8, 28, 8);
+      treeFgGfx.endFill();
+    }
+    this.layers.push({ gfx: treeFgGfx, scrollSpeed: 0.85, offsetX: 0, color: 0, y: 0, h: 0 });
+  }
+
   private _drawGround(env: Environment): void {
     const g = this.groundGfx;
     g.clear();
@@ -257,6 +371,7 @@ export class Parallax {
       beach:  [0xf5d17a, 0xe8b84b],
       desert: [0xd4922a, 0xb87820],
       snow:   [0xe8f4f8, 0xc8dce8],
+      jungle: [0x4a3728, 0x2e1e10], // Đất rừng ẩm màu nâu
     };
     const [gTop, gBot] = groundColors[env.id] ?? [0x4a7c3f, 0x2d5a2a];
     const steps = 6;

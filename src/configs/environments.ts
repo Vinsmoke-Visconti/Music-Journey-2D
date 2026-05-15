@@ -106,6 +106,31 @@ export const environments: Environment[] = [
     isLocked: true,
     price: 35000,
   },
+  {
+    id: 'jungle',
+    name: 'Rừng Rậm',
+    themeColor: '#2d6a4f',
+    gravity: 1.0,
+    roadType: 'curvy',
+    speedFactor: 1.1,
+    assets: {
+      sky: 'backgrounds/jungle_sky.png',
+      ground: 'backgrounds/jungle_ground.png',
+      particles: ['sprites/mud_particle.png'],
+    },
+    audioFilters: {
+      reverb: 0.5,
+      lowpass: 10000,
+    },
+    particleColor: '#6b4226',
+    bgLayers: [
+      { src: 'backgrounds/jungle_layer_sky.png', scrollSpeed: 0.1 },
+      { src: 'backgrounds/jungle_layer_trees_far.png', scrollSpeed: 0.3 },
+      { src: 'backgrounds/jungle_layer_trees_near.png', scrollSpeed: 0.7 },
+    ],
+    isLocked: true,
+    price: 39000,
+  },
 ];
 
 export const getEnvironmentById = (id: string): Environment | undefined =>

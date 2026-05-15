@@ -5,7 +5,7 @@
 
 import * as PIXI from 'pixi.js';
 
-type ParticleType = 'DUST' | 'SMOKE' | 'SNOW' | 'LEAF';
+type ParticleType = 'DUST' | 'SMOKE' | 'SNOW' | 'LEAF' | 'MUD' | 'WATER';
 
 interface Particle {
   gfx: PIXI.Graphics;
@@ -98,7 +98,46 @@ export class Particles {
     this.container.addChild(p.gfx); // Đảm bảo hạt mới lên trên
   }
 
-  /** Phát hạt môi trường (Tuyết hoặc Lá rơi) */
+  /** Bắn bùn và nước khi bánh xe đi qua vũng nước (Jungle) */
+  emitMudSplash(x: number, y: number, speed: number): void {
+    // Bùn: nặng, bắn chéo về sau
+    const mudCount = Math.floor(speed * 2);
+    for (let i = 0; i < mudCount; i++) {
+      const p = this._getIdle();
+      if (!p) break;
+      p.active = true;
+      p.type = 'MUD';
+      p.gfx.visible = true;
+      p.gfx.x = x + (Math.random() - 0.5) * 12;
+      p.gfx.y = y;
+      p.vx = -(speed * 2.5 + Math.random() * 3);
+      p.vy = -(Math.random() * 5 + 1);
+      p.life = 1.0;
+      p.decay = 0.04 + Math.random() * 0.04;
+      p.size = 2 + Math.random() * 3;
+      p.color = 0x6b4226;
+      this._drawParticle(p);
+    }
+    // Nước: nhẹ hơn, bắn cao hơn
+    const waterCount = Math.floor(speed * 3);
+    for (let i = 0; i < waterCount; i++) {
+      const p = this._getIdle();
+      if (!p) break;
+      p.active = true;
+      p.type = 'WATER';
+      p.gfx.visible = true;
+      p.gfx.x = x + (Math.random() - 0.5) * 20;
+      p.gfx.y = y;
+      p.vx = -(speed * 1.5 + Math.random() * 2) * (Math.random() > 0.5 ? 1 : -0.3);
+      p.vy = -(Math.random() * 7 + 2);
+      p.life = 1.0;
+      p.decay = 0.03 + Math.random() * 0.03;
+      p.size = 1 + Math.random() * 2;
+      p.color = 0x4fc3f7;
+      this._drawParticle(p);
+    }
+  }
+
   emitAtmosphere(width: number, height: number, envId: string): void {
     if (Math.random() > 0.15) return; // Không phát liên tục
     const p = this._getIdle();
@@ -156,11 +195,17 @@ export class Particles {
       p.gfx.y += p.vy;
 
       if (p.type === 'DUST') {
-        p.vy += 0.15; // Bụi rơi xuống đất nhanh hơn
-        p.vx *= 0.96; // Giảm tốc độ ngang nhanh
+        p.vy += 0.15;
+        p.vx *= 0.96;
       } else if (p.type === 'SMOKE') {
-        p.vy -= 0.04; // Khói bay lên trên
+        p.vy -= 0.04;
         p.vx *= 0.98;
+      } else if (p.type === 'MUD') {
+        p.vy += 0.4;  // Rơi nhanh như bùn nặng
+        p.vx *= 0.94;
+      } else if (p.type === 'WATER') {
+        p.vy += 0.25; // Nước rơi nhanh hơn bụi nhưng nhẹ hơn bùn
+        p.vx *= 0.97;
       } else if (p.type === 'SNOW') {
         p.gfx.x += Math.sin(Date.now() * 0.002) * 0.5; // Lắc lư khi rơi
       } else if (p.type === 'LEAF') {

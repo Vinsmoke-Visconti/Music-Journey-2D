@@ -11,6 +11,7 @@ export class Road {
   private points: { x: number; y: number }[] = [];
   private app: PIXI.Application;
   private noiseOffset = 0;
+  private puddles: { x: number; width: number }[] = [];
 
   private readonly SEGMENT_WIDTH = 15; // Độ chi tiết của đường
   private readonly GROUND_THICKNESS = 250; // Độ dày cố định của mặt đất từ cạnh dưới màn hình
@@ -55,7 +56,23 @@ export class Road {
     // Giảm độ gồ ghề cho Beach và Desert theo yêu cầu (giảm thêm 50% nữa)
     let amplitude = 15;
     if (envId === 'beach' || envId === 'desert') {
-      amplitude = 3.75; // 7.5 / 2
+      amplitude = 3.75;
+    } else if (envId === 'jungle') {
+      amplitude = 10; // Hơi gồ ghề như đường mòn trong rừng
+    }
+
+    // Tạo vũng nước ngẫu nhiên cho rừng rậm
+    if (envId === 'jungle') {
+      this.puddles = [];
+      const pudCount = 3 + Math.floor(Math.random() * 4); // 3-6 vũng
+      for (let i = 0; i < pudCount; i++) {
+        this.puddles.push({
+          x: 80 + Math.random() * (this.app.screen.width - 160),
+          width: 30 + Math.random() * 50,
+        });
+      }
+    } else {
+      this.puddles = [];
     }
 
     for (let i = 0; i < count; i++) {
@@ -88,11 +105,14 @@ export class Road {
     let lineColor = 0xfff176; // Mặc định: Vạch vàng
 
     if (envId === 'desert') {
-      roadColor = 0xd4a373; 
+      roadColor = 0xd4a373;
       lineColor = 0xfaedcd;
     } else if (envId === 'snow') {
       roadColor = 0xa2d2ff;
       lineColor = 0xffffff;
+    } else if (envId === 'jungle') {
+      roadColor = 0x5a3e28; // Đất rừng ẩm
+      lineColor = 0x4caf50; // Vạch cỏ xanh
     }
 
     // Vẽ phần dưới của mặt đất (vẽ dư xuống 1000px để không bị lộ nền)
@@ -104,6 +124,21 @@ export class Road {
     const lastX = this.points.length > 0 ? this.points[this.points.length - 1].x : this.app.screen.width;
     g.lineTo(lastX, this.app.screen.height + 1000);
     g.endFill();
+
+    // Vẽ vũng nước (Jungle)
+    if (envId === 'jungle') {
+      for (const pud of this.puddles) {
+        const groundY = this.getGroundYAt(pud.x + pud.width / 2);
+        // Bóng nước tối
+        g.beginFill(0x2a5298, 0.55);
+        g.drawEllipse(pud.x + pud.width / 2, groundY - 3, pud.width / 2, 5);
+        g.endFill();
+        // Ánh sáng phản chiếu trên mặt nước
+        g.beginFill(0x7ec8e3, 0.3);
+        g.drawEllipse(pud.x + pud.width / 2 - 5, groundY - 4, pud.width / 4, 2);
+        g.endFill();
+      }
+    }
 
     // Vẽ vạch kẻ đường (vạch đứt)
     g.lineStyle(3, lineColor, 0.6);
@@ -117,7 +152,6 @@ export class Road {
   }
 
   getGroundYAt(x: number): number {
-    // Tìm đoạn thẳng chứa x và nội suy y
     for (let i = 0; i < this.points.length - 1; i++) {
       const p1 = this.points[i];
       const p2 = this.points[i + 1];
@@ -129,7 +163,13 @@ export class Road {
     return this.app.screen.height - this.GROUND_THICKNESS;
   }
 
-  resize(w: number, h: number): void {
-    // Không cần lưu cache vì đã dùng this.app.screen trực tiếp
+  /** Kiểm tra xe có đang đi qua vũng nước không */
+  getPuddleAt(x: number): boolean {
+    for (const pud of this.puddles) {
+      if (x >= pud.x && x <= pud.x + pud.width) return true;
+    }
+    return false;
   }
+
+  resize(w: number, h: number): void {}
 }

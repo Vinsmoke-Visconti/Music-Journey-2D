@@ -411,7 +411,12 @@ app.ticker.add(() => {
   if (spd > 0.3) {
     const wPos = vehicle.getWheelFrontWorldPos();
     const gY   = road.getGroundYAt(wPos.x);
-    particles.emitDust(wPos.x, gY, spd);
+    // Kiểm tra vũng nước (Jungle) - thống nhất với vị trí thực của bánh trước
+    if (currentEnvId === 'jungle' && road.getPuddleAt(wPos.x)) {
+      particles.emitMudSplash(wPos.x, gY, spd);
+    } else {
+      particles.emitDust(wPos.x, gY, spd);
+    }
     if (frameCount % 3 === 0) {
       const ePos = vehicle.getExhaustWorldPos();
       particles.emitSmoke(ePos.x, ePos.y, spd);
