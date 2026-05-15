@@ -23,6 +23,7 @@ export class Parallax {
   private groundGfx: PIXI.Graphics;
   private currentEnv: Environment | null = null;
   private currentProgress: number = 0;
+  private sunGfx: PIXI.Graphics | null = null;
   private readonly GROUND_THICKNESS = 250; // Match Road.ts thickness
 
   // Cấu hình màu bầu trời theo thời gian (Progress 0 -> 1)
@@ -88,7 +89,7 @@ export class Parallax {
       ];
       for (let i = 0; i < jungleSky.length - 1; i++) {
         const c1 = jungleSky[i], c2 = jungleSky[i + 1];
-        const steps = 6;
+        const steps = 40;
         for (let s = 0; s < steps; s++) {
           const st = s / steps;
           const color = this._lerpColor(c1.color, c2.color, st);
@@ -117,7 +118,7 @@ export class Parallax {
     const top = this._lerpColor(c1.top, c2.top, t);
     const bot = this._lerpColor(c1.bot, c2.bot, t);
 
-    const steps = 12;
+    const steps = 40;
     for (let i = 0; i < steps; i++) {
       const stepT = i / steps;
       const color = this._lerpColor(top, bot, stepT);
@@ -275,13 +276,35 @@ export class Parallax {
 
     // Layer 1: Bầu trời xanh sáng (nhìn thấy qua kẽ lá) + Mặt trời
     const skyGfx = new PIXI.Graphics();
+    
     // Mặt trời
-    skyGfx.beginFill(0xffe066, 0.9);
-    skyGfx.drawCircle(W * 0.7, groundY - 220, 38);
-    skyGfx.endFill();
-    skyGfx.beginFill(0xfff4a3, 0.3);
-    skyGfx.drawCircle(W * 0.7, groundY - 220, 58);
-    skyGfx.endFill();
+    const sunGfx = new PIXI.Graphics();
+    const auraSteps = 20;
+    for (let i = 0; i < auraSteps; i++) {
+      const radius = 100 - (i * 3.5);
+      const alpha = 0.03 + (i / auraSteps) * 0.15;
+      sunGfx.beginFill(0xff5722, alpha); // Orange-red aura
+      sunGfx.drawCircle(0, 0, radius);
+      sunGfx.endFill();
+    }
+    const numRays = 12;
+    for (let i = 0; i < numRays; i++) {
+      const angle = (i / numRays) * Math.PI * 2;
+      sunGfx.beginFill(0xff7043, 0.5);
+      sunGfx.moveTo(Math.cos(angle - 0.1) * 38, Math.sin(angle - 0.1) * 38);
+      sunGfx.lineTo(Math.cos(angle) * 75, Math.sin(angle) * 75);
+      sunGfx.lineTo(Math.cos(angle + 0.1) * 38, Math.sin(angle + 0.1) * 38);
+      sunGfx.endFill();
+    }
+    sunGfx.beginFill(0xe64a19, 1); // Deep Red-Orange core
+    sunGfx.drawCircle(0, 0, 38);
+    sunGfx.endFill();
+    
+    sunGfx.x = W * 0.7;
+    sunGfx.y = groundY - 220;
+    this.sunGfx = sunGfx;
+    skyGfx.addChild(sunGfx);
+
     // Vài đám mây trắng nhỏ nhìn qua tán cây
     for (let cx = 0; cx < 25000; cx += 380 + Math.random() * 200) {
       const cy = groundY - 200 - Math.random() * 80;
@@ -296,13 +319,15 @@ export class Parallax {
     for (let tx = -500; tx < 25000; tx += 55 + Math.random() * 40) {
       const th = 110 + Math.random() * 80;
       const tw = 22 + Math.random() * 18;
-      // Thân cây
-      treeFarGfx.beginFill(0x5d4037, 0.8);
-      treeFarGfx.drawRect(tx - 4, groundY - th, 8, th);
+      // Thân cây (Double thickness again: 16 -> 32)
+      treeFarGfx.beginFill(0x3e2723, 1);
+      treeFarGfx.drawRect(tx - 16, groundY - th, 32, th);
       treeFarGfx.endFill();
-      // Tán lá - xanh trung bình dễ nhìn
-      treeFarGfx.beginFill(0x558b2f, 0.85);
+      // Tán lá
+      treeFarGfx.beginFill(0x33691e, 1);
       treeFarGfx.drawEllipse(tx, groundY - th, tw, tw * 0.6);
+      treeFarGfx.drawEllipse(tx - 8, groundY - th + 15, tw * 0.65, tw * 0.5);
+      treeFarGfx.drawEllipse(tx + 8, groundY - th + 15, tw * 0.65, tw * 0.5);
       treeFarGfx.endFill();
     }
     this.layers.push({ gfx: treeFarGfx, scrollSpeed: 0.2, offsetX: 0, color: 0, y: 0, h: 0 });
@@ -313,14 +338,14 @@ export class Parallax {
     for (let tx = -400; tx < 25000; tx += 35 + Math.random() * 30) {
       const th = 130 + Math.random() * 100;
       const tw = 28 + Math.random() * 22;
-      const green = Math.random() > 0.5 ? 0x4caf50 : 0x66bb6a; // Xanh tươi sáng
-      treeMidGfx.beginFill(0x6d4c41);          // Thân nâu sáng hơn
-      treeMidGfx.drawRect(tx - 5, groundY - th, 10, th);
+      const green = Math.random() > 0.5 ? 0x2e7d32 : 0x388e3c; // Xanh tươi sáng
+      treeMidGfx.beginFill(0x4e342e, 1);       // Thân nâu sáng hơn (Double thickness: 20 -> 40)
+      treeMidGfx.drawRect(tx - 20, groundY - th, 40, th);
       treeMidGfx.endFill();
-      treeMidGfx.beginFill(green);             // Xanh lá 100% opacity
+      treeMidGfx.beginFill(green, 1);             // Xanh lá 100% opacity
       treeMidGfx.drawEllipse(tx, groundY - th, tw, tw * 0.65);
-      treeMidGfx.drawEllipse(tx - 10, groundY - th + 20, tw * 0.7, tw * 0.5);
-      treeMidGfx.drawEllipse(tx + 10, groundY - th + 22, tw * 0.75, tw * 0.5);
+      treeMidGfx.drawEllipse(tx - 15, groundY - th + 25, tw * 0.7, tw * 0.5);
+      treeMidGfx.drawEllipse(tx + 15, groundY - th + 25, tw * 0.75, tw * 0.5);
       treeMidGfx.endFill();
       if (Math.random() < 0.055) animalPositions.push(tx);
     }
@@ -365,16 +390,16 @@ export class Parallax {
     for (let tx = -300; tx < 25000; tx += 70 + Math.random() * 50) {
       const th = 160 + Math.random() * 80;
       const tw = 42 + Math.random() * 28;
-      treeFgGfx.beginFill(0x4e342e);           // Thân nâu đậm
-      treeFgGfx.drawRect(tx - 7, groundY - th, 14, th);
+      treeFgGfx.beginFill(0x3e2723, 1);        // Thân nâu đậm (Double thickness: 28 -> 56)
+      treeFgGfx.drawRect(tx - 28, groundY - th, 56, th);
       treeFgGfx.endFill();
-      treeFgGfx.beginFill(0x2e7d32);           // Xanh lá đậm, 100% opacity
+      treeFgGfx.beginFill(0x1b5e20, 1);        // Xanh lá đậm, 100% opacity
       treeFgGfx.drawEllipse(tx, groundY - th - 10, tw, tw * 0.6);
-      treeFgGfx.drawEllipse(tx - 18, groundY - th + 18, tw * 0.6, tw * 0.45);
-      treeFgGfx.drawEllipse(tx + 20, groundY - th + 20, tw * 0.65, tw * 0.45);
+      treeFgGfx.drawEllipse(tx - 25, groundY - th + 20, tw * 0.6, tw * 0.45);
+      treeFgGfx.drawEllipse(tx + 25, groundY - th + 22, tw * 0.65, tw * 0.45);
       treeFgGfx.endFill();
       // Dương xỉ dưới gốc
-      treeFgGfx.beginFill(0x388e3c);
+      treeFgGfx.beginFill(0x2e7d32, 1);
       treeFgGfx.drawEllipse(tx, groundY - 8, 28, 8);
       treeFgGfx.endFill();
     }
@@ -412,14 +437,22 @@ export class Parallax {
     // Cập nhật bầu trời theo thời gian
     this._drawSkyGradient();
 
+    if (this.sunGfx) {
+      this.sunGfx.rotation += 0.005;
+    }
+
     this.layers.forEach(layer => {
       layer.offsetX -= vehicleSpeed * layer.scrollSpeed;
       if (layer.offsetX < -W * 1.5) layer.offsetX += W * 1.5;
       layer.gfx.x = layer.offsetX;
       
-      // Độ sáng của vật thể (núi, cây) giảm xuống khi về đêm
-      const nightFactor = Math.cos((this.currentProgress - 0.5) * Math.PI * 2) * 0.5 + 0.5;
-      layer.gfx.alpha = 0.4 + nightFactor * 0.6;
+      // Độ sáng của vật thể (núi, cây) giảm xuống khi về đêm (chỉ áp dụng cho môi trường không phải rừng)
+      if (this.currentEnv && this.currentEnv.id !== 'jungle') {
+        const nightFactor = Math.cos((this.currentProgress - 0.5) * Math.PI * 2) * 0.5 + 0.5;
+        layer.gfx.alpha = 0.4 + nightFactor * 0.6;
+      } else {
+        layer.gfx.alpha = 1;
+      }
       
       // Dynamic y positioning based on current screen height
       layer.gfx.y = this.app.screen.height - this.GROUND_THICKNESS;
