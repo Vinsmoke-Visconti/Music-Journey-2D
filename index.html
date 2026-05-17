@@ -899,6 +899,82 @@
       backdrop-filter: var(--blur);
     }
     #design-btn:hover { background: rgba(83,52,131,.4); border-color: #a78bfa; }
+
+    /* ─── Preview + Adjustment Layout ─── */
+    .pe-main-row {
+      display: flex;
+      gap: 16px;
+      min-height: 0;
+    }
+    .pe-preview-panel {
+      width: 288px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #pe-vehicle-preview {
+      display: block;
+      width: 288px;
+      height: 200px;
+      border: 1.5px solid rgba(255,255,255,0.18);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 4px 20px rgba(0,0,0,.6);
+      image-rendering: pixelated;
+      background: #12141f;
+    }
+    .pe-adj-section {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .pe-adj-title {
+      font-size: .7rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 2px;
+    }
+    .pe-adj-item { display: flex; flex-direction: column; gap: 3px; }
+    .pe-adj-lbl  { font-size: .68rem; color: var(--muted); }
+    .pe-adj-row  { display: flex; align-items: center; gap: 6px; }
+    .pe-adj-row input[type="range"] {
+      -webkit-appearance: none;
+      flex: 1; height: 4px; border-radius: 4px;
+      background: rgba(255,255,255,.15);
+      outline: none; cursor: pointer;
+    }
+    .pe-adj-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--accent); cursor: pointer;
+      box-shadow: 0 0 6px rgba(249,199,79,.5);
+    }
+    .pe-adj-num {
+      width: 48px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: .78rem;
+      font-family: 'Outfit', sans-serif;
+      text-align: center;
+      padding: 3px 4px;
+      outline: none;
+    }
+    .pe-adj-num:focus { border-color: var(--accent); }
+    .pe-editor-panel {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
   </style>
 </head>
 <body>
@@ -1013,84 +1089,105 @@
   <!-- Pixel Art Editor Modal -->
   <div id="pixel-editor-overlay">
     <div id="pixel-editor-modal">
-
       <!-- Header -->
       <div class="pe-header">
         <span class="pe-title">🎨 PIXEL ART VEHICLE DESIGNER</span>
         <button id="pe-close-btn" title="Đóng">✕</button>
       </div>
 
-      <!-- Name + Tabs -->
-      <div class="pe-name-row">
-        <label class="pe-palette-label" for="pe-vehicle-name">Tên xe</label>
-        <input type="text" id="pe-vehicle-name" class="pe-name-input" placeholder="VD: Xe Rồng Đỏ..." maxlength="30" />
-      </div>
-      <div class="pe-tabs">
-        <button class="pe-tab-btn active" id="pe-tab-body">🚐 Thân xe (64×32)</button>
-        <button class="pe-tab-btn"        id="pe-tab-wheel">🔵 Bánh xe (24×24)</button>
-        <button class="pe-tab-btn"        id="pe-tab-saved">🗂 Mẫu đã lưu</button>
-      </div>
+      <!-- Two-column main area -->
+      <div class="pe-main-row">
 
-      <!-- Toolbar -->
-      <div class="pe-toolbar">
-        <button class="pe-tool-btn active" id="pe-tool-pen"    title="Bút (P)">✏️ Bút</button>
-        <button class="pe-tool-btn"        id="pe-tool-eraser" title="Tẩy (E)">🧹 Tẩy</button>
-        <button class="pe-tool-btn"        id="pe-tool-fill"   title="Đổ màu (F)">🪣 Đổ màu</button>
-        <button class="pe-tool-btn"        id="pe-tool-line"   title="Đường thẳng (L)">╱ Đường</button>
-        <button class="pe-tool-btn"        id="pe-tool-circle" title="Vẽ tròn (C)">○ Tròn</button>
-        <div class="pe-sep"></div>
-        <button class="pe-tool-btn"        id="pe-tool-undo"   title="Hoàn tác (Ctrl+Z)">↩️ Hoàn tác</button>
-        <div class="pe-zoom-row">
-          <button class="pe-zoom-btn" id="pe-zoom-out" title="Thu nhỏ">−</button>
-          <span id="pe-zoom-val">100%</span>
-          <button class="pe-zoom-btn" id="pe-zoom-in"  title="Phóng to">+</button>
-        </div>
-      </div>
-
-      <!-- Body canvas -->
-      <div class="pe-canvas-wrap" id="pe-body-wrap">
-        <div class="pe-canvas-inner" id="pe-body-inner">
-          <canvas id="pe-body-canvas"></canvas>
-          <canvas id="pe-preview-canvas"></canvas>
-        </div>
-      </div>
-
-      <!-- Wheel canvas -->
-      <div class="pe-canvas-wrap" id="pe-wheel-wrap" style="display:none">
-        <div class="pe-canvas-inner" id="pe-wheel-inner">
-          <canvas id="pe-wheel-canvas"></canvas>
-        </div>
-      </div>
-
-      <!-- Saved vehicles tab panel -->
-      <div id="pe-saved-wrap" style="display:none">
-        <div id="pe-saved-list"></div>
-      </div>
-
-      <!-- Palette -->
-      <div>
-        <div class="pe-palette-label">Bảng màu (32 màu)</div>
-        <div class="pe-palette" id="pe-palette"></div>
-        <!-- Color picker row -->
-        <div class="pe-color-row">
-          <div class="pe-color-preview" id="pe-color-preview"></div>
-          <input type="text" id="pe-hex-input" class="pe-hex-input" placeholder="#1a1a2e" maxlength="7" />
-          <div class="pe-opacity-wrap">
-            <span class="pe-opacity-label">Độ trong suốt</span>
-            <input type="range" id="pe-opacity-slider" min="0" max="255" value="255" />
-            <span id="pe-opacity-val">100%</span>
+        <!-- LEFT: Live preview + position adjustments -->
+        <div class="pe-preview-panel">
+          <div class="pe-palette-label">🎮 Xem trước thực tế</div>
+          <canvas id="pe-vehicle-preview" width="288" height="200"></canvas>
+          <div class="pe-adj-section">
+            <div class="pe-adj-title">⚙️ Điều chỉnh vị trí</div>
+            <div class="pe-adj-item">
+              <span class="pe-adj-lbl">Thân xe — Trục Y</span>
+              <div class="pe-adj-row">
+                <input type="range"  id="pe-body-y"          min="-20" max="20" step="1" value="0" />
+                <input type="number" id="pe-body-y-num"      min="-20" max="20" value="0" class="pe-adj-num" />
+              </div>
+            </div>
+            <div class="pe-adj-item">
+              <span class="pe-adj-lbl">Bánh xe — Trục Y</span>
+              <div class="pe-adj-row">
+                <input type="range"  id="pe-wheel-y"         min="-20" max="20" step="1" value="0" />
+                <input type="number" id="pe-wheel-y-num"     min="-20" max="20" value="0" class="pe-adj-num" />
+              </div>
+            </div>
+            <div class="pe-adj-item">
+              <span class="pe-adj-lbl">Khoảng cách bánh xe (X)</span>
+              <div class="pe-adj-row">
+                <input type="range"  id="pe-wheel-dist"      min="30" max="120" step="1" value="73" />
+                <input type="number" id="pe-wheel-dist-num"  min="30" max="120" value="73" class="pe-adj-num" />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Actions -->
-      <div class="pe-actions">
-        <button class="pe-btn pe-btn-reset"   id="pe-reset-btn">↺ Xóa tab hiện tại</button>
-        <button class="pe-btn pe-btn-default" id="pe-default-btn">🚐 Mặc định</button>
-        <button class="pe-btn pe-btn-draft"   id="pe-draft-btn">📋 Lưu nháp</button>
-        <button class="pe-btn pe-btn-apply"   id="pe-apply-btn">💾 Lưu & Áp dụng</button>
-      </div>
-
+        <!-- RIGHT: Editor -->
+        <div class="pe-editor-panel">
+          <div class="pe-name-row">
+            <label class="pe-palette-label" for="pe-vehicle-name">Tên xe</label>
+            <input type="text" id="pe-vehicle-name" class="pe-name-input" placeholder="VD: Xe Rồng Đỏ..." maxlength="30" />
+          </div>
+          <div class="pe-tabs">
+            <button class="pe-tab-btn active" id="pe-tab-body">🚐 Thân xe (64×32)</button>
+            <button class="pe-tab-btn"        id="pe-tab-wheel">🔵 Bánh xe (24×24)</button>
+            <button class="pe-tab-btn"        id="pe-tab-saved">🗂 Mẫu đã lưu</button>
+          </div>
+          <div class="pe-toolbar">
+            <button class="pe-tool-btn active" id="pe-tool-pen"    title="Bút (P)">✏️ Bút</button>
+            <button class="pe-tool-btn"        id="pe-tool-eraser" title="Tẩy (E)">🧹 Tẩy</button>
+            <button class="pe-tool-btn"        id="pe-tool-fill"   title="Đổ màu (F)">🪣 Đổ màu</button>
+            <button class="pe-tool-btn"        id="pe-tool-line"   title="Đường thẳng (L)">╱ Đường</button>
+            <button class="pe-tool-btn"        id="pe-tool-circle" title="Vẽ tròn (C)">○ Tròn</button>
+            <div class="pe-sep"></div>
+            <button class="pe-tool-btn"        id="pe-tool-undo"   title="Hoàn tác (Ctrl+Z)">↩️ Hoàn tác</button>
+            <div class="pe-zoom-row">
+              <button class="pe-zoom-btn" id="pe-zoom-out">−</button>
+              <span id="pe-zoom-val">100%</span>
+              <button class="pe-zoom-btn" id="pe-zoom-in">+</button>
+            </div>
+          </div>
+          <div class="pe-canvas-wrap" id="pe-body-wrap">
+            <div class="pe-canvas-inner" id="pe-body-inner">
+              <canvas id="pe-body-canvas"></canvas>
+              <canvas id="pe-preview-canvas"></canvas>
+            </div>
+          </div>
+          <div class="pe-canvas-wrap" id="pe-wheel-wrap" style="display:none">
+            <div class="pe-canvas-inner" id="pe-wheel-inner">
+              <canvas id="pe-wheel-canvas"></canvas>
+            </div>
+          </div>
+          <div id="pe-saved-wrap" style="display:none">
+            <div id="pe-saved-list"></div>
+          </div>
+          <div>
+            <div class="pe-palette-label">Bảng màu (32 màu)</div>
+            <div class="pe-palette" id="pe-palette"></div>
+            <div class="pe-color-row">
+              <div class="pe-color-preview" id="pe-color-preview"></div>
+              <input type="text" id="pe-hex-input" class="pe-hex-input" placeholder="#1a1a2e" maxlength="7" />
+              <div class="pe-opacity-wrap">
+                <span class="pe-opacity-label">Độ trong suốt</span>
+                <input type="range" id="pe-opacity-slider" min="0" max="255" value="255" />
+                <span id="pe-opacity-val">100%</span>
+              </div>
+            </div>
+          </div>
+          <div class="pe-actions">
+            <button class="pe-btn pe-btn-reset"   id="pe-reset-btn">↺ Xóa tab hiện tại</button>
+            <button class="pe-btn pe-btn-default" id="pe-default-btn">🚐 Mặc định</button>
+            <button class="pe-btn pe-btn-draft"   id="pe-draft-btn">📋 Lưu nháp</button>
+            <button class="pe-btn pe-btn-apply"   id="pe-apply-btn">💾 Lưu & Áp dụng</button>
+          </div>
+        </div><!-- /pe-editor-panel -->
+      </div><!-- /pe-main-row -->
       <div id="pe-toast"></div>
     </div>
   </div>

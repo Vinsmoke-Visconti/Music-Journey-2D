@@ -420,10 +420,11 @@ vehicleSelect.addEventListener('change', () => {
 
 // ─── Pixel Art Editor Bootstrap ───────────────────────────────
 function applyCustomVehicle(
-  bodyGrid: number[][], wheelGrid: number[][], name: string, id: string
+  bodyGrid: number[][], wheelGrid: number[][], name: string, id: string,
+  offsets?: {bodyYOff:number; wheelYOff:number; wheelDist:number}
 ): void {
-  // 1. Update the strategy pixel data
-  customVehicleStrategy.updateGrid(bodyGrid, wheelGrid);
+  // 1. Update the strategy pixel data + position offsets
+  customVehicleStrategy.updateGrid(bodyGrid, wheelGrid, offsets);
 
   // 2. Ensure 'custom' config is set so vehicle uses CustomVehicleStrategy
   const customCfg = getVehicleById('custom')!;

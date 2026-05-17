@@ -51,25 +51,33 @@ export class PixelEditor {
   private painting = false;
   private dragStart:{col:number;row:number}|null = null;
 
+  private bodyYOff   = 0;   // body Y offset in game pixels
+  private wheelYOff  = 0;   // wheel Y offset in game pixels
+  private wheelDist  = 73;  // half X-distance between wheels
+
   private bodyCanvas!:HTMLCanvasElement;  private bodyCtx!:CanvasRenderingContext2D;
   private wheelCanvas!:HTMLCanvasElement; private wheelCtx!:CanvasRenderingContext2D;
   private previewCanvas!:HTMLCanvasElement; private previewCtx!:CanvasRenderingContext2D;
+  private vehiclePreview!:HTMLCanvasElement; private vehicleCtx!:CanvasRenderingContext2D;
 
-  private onApply:(b:number[][],w:number[][],name:string,id:string)=>void;
+  private onApply:(b:number[][],w:number[][],name:string,id:string,off:{bodyYOff:number,wheelYOff:number,wheelDist:number})=>void;
 
-  constructor(onApply:(b:number[][],w:number[][],name:string,id:string)=>void){
+  constructor(onApply:(b:number[][],w:number[][],name:string,id:string,off:{bodyYOff:number,wheelYOff:number,wheelDist:number})=>void){
     this.onApply=onApply;
     this.bodyCanvas   = document.getElementById('pe-body-canvas')   as HTMLCanvasElement;
     this.wheelCanvas  = document.getElementById('pe-wheel-canvas')  as HTMLCanvasElement;
     this.previewCanvas= document.getElementById('pe-preview-canvas')as HTMLCanvasElement;
+    this.vehiclePreview=document.getElementById('pe-vehicle-preview') as HTMLCanvasElement;
     this.bodyCanvas.width=BODY_W;   this.bodyCanvas.height=BODY_H;
     this.wheelCanvas.width=WHEEL_W; this.wheelCanvas.height=WHEEL_H;
     this.previewCanvas.width=BODY_W;this.previewCanvas.height=BODY_H;
     this.bodyCtx    = this.bodyCanvas.getContext('2d')!;
     this.wheelCtx   = this.wheelCanvas.getContext('2d')!;
     this.previewCtx = this.previewCanvas.getContext('2d')!;
+    this.vehicleCtx = this.vehiclePreview.getContext('2d')!;
     this._buildPalette();
     this._bindEvents();
+    this._bindAdjustments();
     this._setTab('body');
     this._loadDraft();
     this.renderBoth();
@@ -177,6 +185,20 @@ export class PixelEditor {
     this._bindCanvas(this.wheelCanvas,'wheel');
     // Single global mouseup listener (avoid duplicate registration per canvas)
     window.addEventListener('mouseup', this._onMouseUp);
+  }
+
+  // ── Adjustment sliders ────────────────────────────────────
+  private _bindAdjustments(){
+    const bind=(slideId:string,numId:string,setter:(v:number)=>void)=>{
+      const s=document.getElementById(slideId) as HTMLInputElement|null;
+      const n=document.getElementById(numId)   as HTMLInputElement|null;
+      if(!s||!n)return;
+      s.addEventListener('input',()=>{ n.value=s.value; setter(+s.value); this._renderVehiclePreview(); });
+      n.addEventListener('change',()=>{ const v=Math.max(+n.min,Math.min(+n.max,+n.value)); n.value=String(v); s.value=String(v); setter(v); this._renderVehiclePreview(); });
+    };
+    bind('pe-body-y',    'pe-body-y-num',    (v)=>{ this.bodyYOff=v;  });
+    bind('pe-wheel-y',   'pe-wheel-y-num',   (v)=>{ this.wheelYOff=v; });
+    bind('pe-wheel-dist','pe-wheel-dist-num',(v)=>{ this.wheelDist=v; });
   }
 
   private _bindCanvas(canvas:HTMLCanvasElement,tab:TabMode){
@@ -360,9 +382,10 @@ export class PixelEditor {
   }
   private _apply(){
     const name=this._getName(),id=`custom_${Date.now()}`;
+    const off={bodyYOff:this.bodyYOff,wheelYOff:this.wheelYOff,wheelDist:this.wheelDist};
     const entry:SavedVehicle={id,name,bodyGrid:this.bodyGrid.map(r=>[...r]),wheelGrid:this.wheelGrid.map(r=>[...r])};
     this._saveToStorage(entry);
-    this.onApply(entry.bodyGrid,entry.wheelGrid,name,id);
+    this.onApply(entry.bodyGrid,entry.wheelGrid,name,id,off);
     this._renderSavedList();
     this.close();
   }
@@ -392,7 +415,7 @@ export class PixelEditor {
         <button class="pe-saved-apply" title="Áp dụng ngay">▶</button>
         <button class="pe-saved-del" title="Xóa">🗑</button>`;
       row.querySelector('.pe-saved-load')!.addEventListener('click',()=>{this.loadSaved(v);this._setTab('body');this._toast(`📂 Đã tải "${v.name}"`)});
-      row.querySelector('.pe-saved-apply')!.addEventListener('click',()=>{this.onApply(v.bodyGrid,v.wheelGrid,v.name,v.id);this.close();});
+      row.querySelector('.pe-saved-apply')!.addEventListener('click',()=>{this.onApply(v.bodyGrid,v.wheelGrid,v.name,v.id,{bodyYOff:this.bodyYOff,wheelYOff:this.wheelYOff,wheelDist:this.wheelDist});this.close();});
       row.querySelector('.pe-saved-del')!.addEventListener('click',()=>{this._deleteFromStorage(v.id);this._renderSavedList();});
       list.appendChild(row);
     });
@@ -408,9 +431,47 @@ export class PixelEditor {
 
   renderBody(){
     this._renderGrid(this.bodyCtx,this.bodyGrid,CUSTOM_GRID_COLS,CUSTOM_GRID_ROWS,BODY_CELL,BODY_W,BODY_H);
+    this._renderVehiclePreview();
   }
   renderWheel(){
     this._renderGrid(this.wheelCtx,this.wheelGrid,CUSTOM_WHEEL_COLS,CUSTOM_WHEEL_ROWS,WHEEL_CELL,WHEEL_W,WHEEL_H);
+    this._renderVehiclePreview();
+  }
+
+  // ── Live vehicle preview ───────────────────────────────────
+  private _renderVehiclePreview(){
+    if(!this.vehiclePreview)return;
+    const ctx=this.vehicleCtx;
+    const PW=this.vehiclePreview.width, PH=this.vehiclePreview.height;
+    ctx.clearRect(0,0,PW,PH);
+    // Checkerboard background
+    const gs=8;
+    for(let y=0;y<PH;y+=gs) for(let x=0;x<PW;x+=gs){
+      ctx.fillStyle=((x/gs+y/gs)%2===0)?'#1a1a2e':'#222436'; ctx.fillRect(x,y,gs,gs);
+    }
+    const BPIX=3.3, WPIX=1.5;
+    const BCOLS=this.bodyGrid[0]?.length??64, BROWS=this.bodyGrid.length;
+    const WCOLS=this.wheelGrid[0]?.length??24, WROWS=this.wheelGrid.length;
+    const BW=BCOLS*BPIX, BH=BROWS*BPIX, WR=(WCOLS*WPIX)/2;
+    const cx=PW/2, groundY=PH-18;
+    // Draw body
+    const bx=cx-BW/2, by=groundY-BH+this.bodyYOff*BPIX;
+    for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++){
+      const v=this.bodyGrid[r]?.[c]??0; if(!v)continue;
+      ctx.fillStyle=numToCSS(v); ctx.fillRect(bx+c*BPIX,by+r*BPIX,BPIX,BPIX);
+    }
+    // Draw ground line
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,groundY); ctx.lineTo(PW,groundY); ctx.stroke();
+    // Draw wheels
+    const wy=groundY-WR+this.wheelYOff*WPIX;
+    for(const wxOff of [this.wheelDist,-this.wheelDist]){
+      const wox=cx+wxOff-WR, woy=wy-WR;
+      for(let r=0;r<WROWS;r++) for(let c=0;c<WCOLS;c++){
+        const v=this.wheelGrid[r]?.[c]??0; if(!v)continue;
+        ctx.fillStyle=numToCSS(v); ctx.fillRect(wox+c*WPIX,woy+r*WPIX,WPIX,WPIX);
+      }
+    }
   }
 
   private _renderGrid(ctx:CanvasRenderingContext2D,grid:number[][],cols:number,rows:number,cell:number,cW:number,cH:number){

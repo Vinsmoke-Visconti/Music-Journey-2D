@@ -104,29 +104,43 @@ export class CustomVehicleStrategy implements VehicleStrategy {
   id = 'custom';
   private bodyGrid:  number[][];
   private wheelGrid: number[][];
+  private bodyYOffset  = 0;
+  private wheelYOffset = 0;
+  private wheelDistance = 73;
 
-  constructor(bodyGrid?: number[][], wheelGrid?: number[][]) {
+  constructor(bodyGrid?: number[][], wheelGrid?: number[][], offsets?: {bodyYOff?:number; wheelYOff?:number; wheelDist?:number}) {
     this.bodyGrid  = bodyGrid  ?? makeDefaultBodyGrid();
     this.wheelGrid = wheelGrid ?? makeDefaultWheelGrid();
+    if (offsets) {
+      this.bodyYOffset   = offsets.bodyYOff  ?? 0;
+      this.wheelYOffset  = offsets.wheelYOff ?? 0;
+      this.wheelDistance = offsets.wheelDist ?? 73;
+    }
   }
 
-  updateGrid(bodyGrid: number[][], wheelGrid?: number[][]): void {
+  updateGrid(bodyGrid: number[][], wheelGrid?: number[][], offsets?: {bodyYOff?:number; wheelYOff?:number; wheelDist?:number}): void {
     this.bodyGrid  = bodyGrid;
     if (wheelGrid) this.wheelGrid = wheelGrid;
+    if (offsets) {
+      if (offsets.bodyYOff  !== undefined) this.bodyYOffset   = offsets.bodyYOff;
+      if (offsets.wheelYOff !== undefined) this.wheelYOffset  = offsets.wheelYOff;
+      if (offsets.wheelDist !== undefined) this.wheelDistance = offsets.wheelDist;
+    }
   }
 
   getDimensions(): VehicleDimensions {
     return {
       W, H, WR,
-      wFrontX:  73,   // ~matches van proportions for W≈211
-      wRearX:  -73,
+      wFrontX:  this.wheelDistance,
+      wRearX:  -this.wheelDistance,
     };
   }
 
   drawBody(container: PIXI.Container): void {
     const g = new PIXI.Graphics();
     container.addChild(g);
-    const ox = -W / 2, oy = -H;
+    const ox = -W / 2;
+    const oy = -H + this.bodyYOffset * BODY_PX;
     for (let row = 0; row < CUSTOM_GRID_ROWS; row++) {
       for (let col = 0; col < CUSTOM_GRID_COLS; col++) {
         const cv = this.bodyGrid[row]?.[col] ?? 0;
@@ -146,7 +160,7 @@ export class CustomVehicleStrategy implements VehicleStrategy {
       const g = new PIXI.Graphics();
       cont.addChild(g);
       const ox = -(CUSTOM_WHEEL_COLS * WHEEL_PX) / 2;
-      const oy = -(CUSTOM_WHEEL_ROWS * WHEEL_PX) / 2;
+      const oy = -(CUSTOM_WHEEL_ROWS * WHEEL_PX) / 2 + this.wheelYOffset * WHEEL_PX;
       for (let row = 0; row < CUSTOM_WHEEL_ROWS; row++) {
         for (let col = 0; col < CUSTOM_WHEEL_COLS; col++) {
           const cv = this.wheelGrid[row]?.[col] ?? 0;
