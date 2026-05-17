@@ -628,6 +628,116 @@
     }
     .pe-btn-apply:hover { opacity: .88; transform: translateY(-1px); }
 
+    .pe-btn-draft {
+      background: var(--surface2);
+      color: #a78bfa;
+      border-color: rgba(83,52,131,.5);
+    }
+    .pe-btn-draft:hover { background: rgba(83,52,131,.25); border-color: #a78bfa; }
+
+    /* Tabs */
+    .pe-tabs {
+      display: flex;
+      gap: 6px;
+    }
+    .pe-tab-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'Outfit', sans-serif;
+      font-size: .8rem;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .pe-tab-btn:hover { color: var(--text); background: rgba(255,255,255,.08); }
+    .pe-tab-btn.active {
+      background: rgba(249,199,79,.15);
+      color: var(--accent);
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Vehicle name input */
+    .pe-name-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pe-name-input {
+      flex: 1;
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      font-size: .85rem;
+      padding: 6px 12px;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .pe-name-input:focus { border-color: var(--accent); }
+    .pe-name-input::placeholder { color: var(--muted); }
+
+    /* Saved vehicles list */
+    .pe-saved-section {
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+    .pe-saved-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      border-radius: var(--radius-sm);
+      transition: background var(--transition);
+    }
+    .pe-saved-item:hover { background: var(--surface2); }
+    .pe-saved-name {
+      flex: 1;
+      font-size: .82rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pe-saved-load, .pe-saved-apply, .pe-saved-del {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: .85rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background var(--transition);
+      color: var(--text);
+    }
+    .pe-saved-load:hover  { background: rgba(255,255,255,.1); }
+    .pe-saved-apply:hover { background: rgba(249,199,79,.2); }
+    .pe-saved-del:hover   { background: rgba(239,68,68,.2); }
+
+    /* In-editor toast */
+    #pe-toast {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(249,199,79,.9);
+      color: #000;
+      font-size: .8rem;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s, transform .3s;
+      white-space: nowrap;
+    }
+    #pe-toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
     /* Design button in top bar */
     #design-btn {
       background: var(--surface);
@@ -757,10 +867,27 @@
   <!-- Pixel Art Editor Modal -->
   <div id="pixel-editor-overlay">
     <div id="pixel-editor-modal">
+
+      <!-- Header -->
       <div class="pe-header">
         <span class="pe-title">🎨 PIXEL ART VEHICLE DESIGNER</span>
         <button id="pe-close-btn" title="Đóng">✕</button>
       </div>
+
+      <!-- Vehicle Name -->
+      <div class="pe-name-row">
+        <label class="pe-palette-label" for="pe-vehicle-name">Tên xe</label>
+        <input type="text" id="pe-vehicle-name" class="pe-name-input"
+               placeholder="VD: Xe Lửa Đỏ..." maxlength="30" />
+      </div>
+
+      <!-- Tabs -->
+      <div class="pe-tabs">
+        <button class="pe-tab-btn active" id="pe-tab-body">🚐 Thân xe (32×16)</button>
+        <button class="pe-tab-btn"        id="pe-tab-wheel">🔵 Bánh xe (12×12)</button>
+      </div>
+
+      <!-- Toolbar -->
       <div class="pe-toolbar">
         <button class="pe-tool-btn active" id="pe-tool-pen"    title="Bút vẽ (P)">✏️ Bút</button>
         <button class="pe-tool-btn"        id="pe-tool-eraser" title="Tẩy (E)">🧹 Tẩy</button>
@@ -768,20 +895,43 @@
         <div class="pe-sep"></div>
         <button class="pe-tool-btn"        id="pe-tool-undo"   title="Hoàn tác (Ctrl+Z)">↩️ Hoàn tác</button>
       </div>
-      <div class="pe-canvas-wrap" id="pe-canvas-wrap">
-        <canvas id="pe-canvas"></canvas>
+
+      <!-- Body canvas -->
+      <div class="pe-canvas-wrap" id="pe-body-wrap">
+        <canvas id="pe-body-canvas"></canvas>
       </div>
+
+      <!-- Wheel canvas -->
+      <div class="pe-canvas-wrap" id="pe-wheel-wrap" style="display:none">
+        <canvas id="pe-wheel-canvas"></canvas>
+      </div>
+
+      <!-- Palette -->
       <div>
         <div class="pe-palette-label">Bảng màu</div>
         <div class="pe-palette" id="pe-palette"></div>
       </div>
+
+      <!-- Action buttons -->
       <div class="pe-actions">
-        <button class="pe-btn pe-btn-reset"   id="pe-reset-btn">↺ Xóa trắng</button>
-        <button class="pe-btn pe-btn-default" id="pe-default-btn">🚐 Mẫu mặc định</button>
-        <button class="pe-btn pe-btn-apply"   id="pe-apply-btn">✅ Áp dụng lên xe</button>
+        <button class="pe-btn pe-btn-reset"   id="pe-reset-btn">↺ Xóa tab hiện tại</button>
+        <button class="pe-btn pe-btn-default" id="pe-default-btn">🚐 Mặc định</button>
+        <button class="pe-btn pe-btn-draft"   id="pe-draft-btn">📋 Lưu nháp</button>
+        <button class="pe-btn pe-btn-apply"   id="pe-apply-btn">💾 Lưu & Áp dụng</button>
       </div>
+
+      <!-- Saved vehicles list -->
+      <div class="pe-saved-section">
+        <div class="pe-palette-label">🗂 Mẫu xe đã lưu</div>
+        <div id="pe-saved-list"></div>
+      </div>
+
+      <!-- In-editor toast -->
+      <div id="pe-toast"></div>
+
     </div>
   </div>
+
 
 </div>
 

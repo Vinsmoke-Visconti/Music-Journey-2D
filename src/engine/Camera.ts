@@ -1,20 +1,22 @@
 // ============================================================
-// Camera.ts - Logic di chuyển khung nhìn (Camera)
-// Music Journey 2D | Giai đoạn 1: Thiết lập cấu trúc Engine
+// Camera.ts - Shake effect only (stage follows nothing, just shakes on bass)
+// Music Journey 2D | Strategy Pattern Refactored
 // ============================================================
 
 import * as PIXI from 'pixi.js';
 
 export class Camera {
   private container: PIXI.Container;
+
+  // Shake state — always decays toward 0, never accumulates
+  private shakeX: number = 0;
+  private shakeY: number = 0;
+  private readonly DECAY = 0.72; // multiplier per frame
+
+  // Legacy fields kept for API compatibility
   private targetX: number = 0;
   private targetY: number = 0;
   private lerpFactor: number = 0.1;
-
-  // Shake state - separate from base position so it always decays to 0
-  private shakeX: number = 0;
-  private shakeY: number = 0;
-  private shakeDecay: number = 0.75; // multiplier per frame (← decay speed)
 
   constructor(container: PIXI.Container) {
     this.container = container;
@@ -25,44 +27,60 @@ export class Camera {
     this.targetY = y;
   }
 
-  update(screenWidth: number, screenHeight: number): void {
-    // Lerp base position toward target
-    const currentX = this.container.x - this.shakeX;
-    const currentY = this.container.y - this.shakeY;
-
-    const newBaseX = currentX + (-this.targetX + screenWidth / 2 - currentX) * this.lerpFactor;
-    const newBaseY = currentY + (-this.targetY + screenHeight / 2 - currentY) * this.lerpFactor;
-
-    // Decay existing shake toward 0
-    this.shakeX *= this.shakeDecay;
-    this.shakeY *= this.shakeDecay;
-
-    // Snap very small shake to 0 to avoid lingering drift
-    if (Math.abs(this.shakeX) < 0.05) this.shakeX = 0;
-    if (Math.abs(this.shakeY) < 0.05) this.shakeY = 0;
-
-    this.container.x = newBaseX + this.shakeX;
-    this.container.y = newBaseY + this.shakeY;
+  /**
+   * Legacy update — only applies shake offset, does NOT lerp the stage.
+   * The stage position is managed by the PIXI layout directly.
+   */
+  update(_screenWidth: number, _screenHeight: number): void {
+    this.decayShake();
   }
 
   /**
-   * Trigger a shake impulse - decays automatically each frame.
-   * Does NOT accumulate: each call sets a fresh offset bounded by intensity.
+   * Decay shake by one frame. Call once per game-loop tick.
+   * The shake X/Y offsets are applied to the container directly.
    */
-  shake(intensity: number = 5): void {
-    // Clamp so shake can't exceed a safe maximum regardless of bassEnergy
-    const maxShake = 10;
-    const clamped = Math.min(intensity, maxShake);
-    this.shakeX = (Math.random() - 0.5) * clamped * 2;
-    this.shakeY = (Math.random() - 0.5) * clamped * 2;
+  decayShake(): void {
+    // Remove previous shake from container
+    this.container.x -= this.shakeX;
+    this.container.y -= this.shakeY;
+
+    // Decay
+    this.shakeX *= this.DECAY;
+    this.shakeY *= this.DECAY;
+
+    // Snap to zero when negligible
+    if (Math.abs(this.shakeX) < 0.05) this.shakeX = 0;
+    if (Math.abs(this.shakeY) < 0.05) this.shakeY = 0;
+
+    // Re-apply decayed shake
+    this.container.x += this.shakeX;
+    this.container.y += this.shakeY;
   }
 
-  /** Immediately reset camera to origin (call when music stops) */
+  /**
+   * Trigger a fresh shake impulse.
+   * Replaces any existing shake so it cannot accumulate across frames.
+   */
+  shake(intensity: number = 5): void {
+    const MAX = 10;
+    const c = Math.min(intensity, MAX);
+    // Remove old shake from container first
+    this.container.x -= this.shakeX;
+    this.container.y -= this.shakeY;
+    // Set new shake
+    this.shakeX = (Math.random() - 0.5) * c * 2;
+    this.shakeY = (Math.random() - 0.5) * c * 2;
+    // Apply new shake
+    this.container.x += this.shakeX;
+    this.container.y += this.shakeY;
+  }
+
+  /** Immediately cancel shake — call when music stops or scene resets. */
   resetPosition(): void {
+    this.container.x -= this.shakeX;
+    this.container.y -= this.shakeY;
     this.shakeX = 0;
     this.shakeY = 0;
-    this.container.x = 0;
-    this.container.y = 0;
   }
 
   setLerpFactor(factor: number): void {

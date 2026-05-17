@@ -1,19 +1,29 @@
 // ============================================================
-// PixelEditor.ts - Pixel Art Vehicle Editor
+// PixelEditor.ts - Pixel Art Vehicle Editor (Body + Wheel tabs)
+// Supports naming, draft save (localStorage), and apply to game.
 // Music Journey 2D | Option 4: Vehicle Customization
 // ============================================================
 
 import {
-  CUSTOM_GRID_COLS,
-  CUSTOM_GRID_ROWS,
-  makeBlankGrid,
-  makeDefaultGrid,
+  CUSTOM_GRID_COLS, CUSTOM_GRID_ROWS,
+  CUSTOM_WHEEL_COLS, CUSTOM_WHEEL_ROWS,
+  makeBlankGrid, makeBlankWheelGrid,
+  makeDefaultBodyGrid, makeDefaultWheelGrid,
 } from './strategies/vehicles/CustomVehicleStrategy';
 
-const CELL = 18; // display px per grid cell
-const CANVAS_W = CUSTOM_GRID_COLS * CELL; // 576
-const CANVAS_H = CUSTOM_GRID_ROWS * CELL; // 288
+// Display pixel sizes
+const BODY_CELL  = 16; // px per grid cell on canvas
+const WHEEL_CELL = 22; // px per wheel cell on canvas
 
+const BODY_W  = CUSTOM_GRID_COLS  * BODY_CELL;   // 512
+const BODY_H  = CUSTOM_GRID_ROWS  * BODY_CELL;   // 256
+const WHEEL_W = CUSTOM_WHEEL_COLS * WHEEL_CELL;  // 264
+const WHEEL_H = CUSTOM_WHEEL_ROWS * WHEEL_CELL;  // 264
+
+const STORAGE_KEY     = 'mj2d_custom_vehicles';
+const DRAFT_KEY       = 'mj2d_draft';
+
+// ── Colour palette ────────────────────────────────────────────
 const PALETTE: number[] = [
   0x1a1a2e, 0x16213e, 0x0f3460, 0x533483,
   0xe94560, 0xf5a623, 0xf9c74f, 0x90be6d,
@@ -21,43 +31,95 @@ const PALETTE: number[] = [
   0xf8f9fa, 0xadb5bd, 0x6c757d, 0x343a40,
 ];
 
-type Tool = 'pen' | 'eraser' | 'fill';
+export interface SavedVehicle {
+  id: string;
+  name: string;
+  bodyGrid: number[][];
+  wheelGrid: number[][];
+}
+
+type Tool    = 'pen' | 'eraser' | 'fill';
+type TabMode = 'body' | 'wheel';
 
 function hexToCSS(hex: number): string {
   return `#${hex.toString(16).padStart(6, '0')}`;
 }
 
 export class PixelEditor {
-  private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
-  private grid: number[][];
-  private history: number[][][] = [];
+  // Grids
+  private bodyGrid:  number[][] = makeDefaultBodyGrid();
+  private wheelGrid: number[][] = makeDefaultWheelGrid();
+
+  // History per tab
+  private bodyHistory:  number[][][] = [];
+  private wheelHistory: number[][][] = [];
+
+  // Drawing state
   private activeColor: number = PALETTE[0];
-  private tool: Tool = 'pen';
-  private painting = false;
+  private tool: Tool     = 'pen';
+  private mode: TabMode  = 'body';
+  private painting       = false;
 
-  private onApply: (grid: number[][]) => void;
+  // Canvas refs
+  private bodyCanvas:  HTMLCanvasElement;
+  private bodyCtx:     CanvasRenderingContext2D;
+  private wheelCanvas: HTMLCanvasElement;
+  private wheelCtx:    CanvasRenderingContext2D;
 
-  constructor(onApply: (grid: number[][]) => void) {
+  private onApply: (bodyGrid: number[][], wheelGrid: number[][], name: string, id: string) => void;
+
+  constructor(
+    onApply: (bodyGrid: number[][], wheelGrid: number[][], name: string, id: string) => void
+  ) {
     this.onApply = onApply;
-    this.grid = makeDefaultGrid();
 
-    this.canvas = document.getElementById('pe-canvas') as HTMLCanvasElement;
-    this.canvas.width  = CANVAS_W;
-    this.canvas.height = CANVAS_H;
-    this.ctx = this.canvas.getContext('2d')!;
+    this.bodyCanvas  = document.getElementById('pe-body-canvas')  as HTMLCanvasElement;
+    this.wheelCanvas = document.getElementById('pe-wheel-canvas') as HTMLCanvasElement;
+
+    this.bodyCanvas.width   = BODY_W;
+    this.bodyCanvas.height  = BODY_H;
+    this.wheelCanvas.width  = WHEEL_W;
+    this.wheelCanvas.height = WHEEL_H;
+
+    this.bodyCtx  = this.bodyCanvas.getContext('2d')!;
+    this.wheelCtx = this.wheelCanvas.getContext('2d')!;
 
     this._buildPalette();
     this._bindEvents();
-    this.render();
+    this._setTab('body');
+    this._loadDraft();
+    this.renderBoth();
+    this._renderSavedList();
   }
 
   // ── Open / Close ───────────────────────────────────────────
   open(): void {
     document.getElementById('pixel-editor-overlay')!.classList.add('open');
+    this.renderBoth();
   }
   close(): void {
     document.getElementById('pixel-editor-overlay')!.classList.remove('open');
+  }
+
+  // ── Tab switching ──────────────────────────────────────────
+  private _setTab(tab: TabMode): void {
+    this.mode = tab;
+    const bodyWrap  = document.getElementById('pe-body-wrap')!;
+    const wheelWrap = document.getElementById('pe-wheel-wrap')!;
+    const btnBody   = document.getElementById('pe-tab-body')!;
+    const btnWheel  = document.getElementById('pe-tab-wheel')!;
+
+    if (tab === 'body') {
+      bodyWrap.style.display  = 'block';
+      wheelWrap.style.display = 'none';
+      btnBody.classList.add('active');
+      btnWheel.classList.remove('active');
+    } else {
+      bodyWrap.style.display  = 'none';
+      wheelWrap.style.display = 'block';
+      btnBody.classList.remove('active');
+      btnWheel.classList.add('active');
+    }
   }
 
   // ── Palette ────────────────────────────────────────────────
@@ -70,8 +132,7 @@ export class PixelEditor {
     eraser.className = 'pe-swatch pe-swatch-eraser';
     eraser.title = 'Tẩy (trong suốt)';
     eraser.addEventListener('click', () => {
-      this.tool = 'eraser';
-      this.activeColor = 0;
+      this.tool = 'eraser'; this.activeColor = 0;
       this._setActiveTool('eraser');
       this._setActiveSwatch(eraser);
     });
@@ -84,8 +145,7 @@ export class PixelEditor {
       swatch.title = hexToCSS(hex);
       swatch.addEventListener('click', () => {
         this.activeColor = hex;
-        this.tool = 'pen';
-        this._setActiveTool('pen');
+        if (this.tool === 'eraser') { this.tool = 'pen'; this._setActiveTool('pen'); }
         this._setActiveSwatch(swatch);
       });
       container.appendChild(swatch);
@@ -101,25 +161,29 @@ export class PixelEditor {
   private _setActiveTool(id: Tool): void {
     this.tool = id;
     document.querySelectorAll('.pe-tool-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById(`pe-tool-${id}`);
-    btn?.classList.add('active');
+    document.getElementById(`pe-tool-${id}`)?.classList.add('active');
   }
 
-  // ── Event Bindings ─────────────────────────────────────────
+  // ── Events ────────────────────────────────────────────────
   private _bindEvents(): void {
-    // Tool buttons
-    document.getElementById('pe-tool-pen')!   .addEventListener('click', () => { this.tool = 'pen';    this._setActiveTool('pen'); });
-    document.getElementById('pe-tool-eraser')!.addEventListener('click', () => { this.tool = 'eraser'; this._setActiveTool('eraser'); });
-    document.getElementById('pe-tool-fill')!  .addEventListener('click', () => { this.tool = 'fill';   this._setActiveTool('fill'); });
+    // Tab buttons
+    document.getElementById('pe-tab-body')! .addEventListener('click', () => this._setTab('body'));
+    document.getElementById('pe-tab-wheel')!.addEventListener('click', () => this._setTab('wheel'));
+
+    // Tools
+    document.getElementById('pe-tool-pen')!   .addEventListener('click', () => this._setActiveTool('pen'));
+    document.getElementById('pe-tool-eraser')!.addEventListener('click', () => this._setActiveTool('eraser'));
+    document.getElementById('pe-tool-fill')!  .addEventListener('click', () => this._setActiveTool('fill'));
     document.getElementById('pe-tool-undo')!  .addEventListener('click', () => this._undo());
 
-    // Action buttons
+    // Actions
     document.getElementById('pe-reset-btn')!  .addEventListener('click', () => this._reset());
     document.getElementById('pe-default-btn')!.addEventListener('click', () => this._loadDefault());
+    document.getElementById('pe-draft-btn')!  .addEventListener('click', () => this._saveDraft());
     document.getElementById('pe-apply-btn')!  .addEventListener('click', () => this._apply());
     document.getElementById('pe-close-btn')!  .addEventListener('click', () => this.close());
 
-    // Keyboard shortcuts
+    // Keyboard
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       if (!document.getElementById('pixel-editor-overlay')!.classList.contains('open')) return;
       if (e.key === 'p' || e.key === 'P') this._setActiveTool('pen');
@@ -129,142 +193,304 @@ export class PixelEditor {
       if (e.key === 'Escape') this.close();
     });
 
-    // Canvas drawing
-    this.canvas.addEventListener('mousedown', (e) => {
-      this.painting = true;
-      this._handlePaint(e);
+    // Mouse / touch on BOTH canvases
+    this._bindCanvas(this.bodyCanvas,  'body');
+    this._bindCanvas(this.wheelCanvas, 'wheel');
+  }
+
+  private _bindCanvas(canvas: HTMLCanvasElement, tab: TabMode): void {
+    canvas.addEventListener('mousedown', (e) => {
+      this.painting = true; this._setTab(tab); this._handlePaint(e, tab);
     });
-    this.canvas.addEventListener('mousemove', (e) => {
-      if (!this.painting) return;
-      if (this.tool !== 'fill') this._handlePaint(e);
+    canvas.addEventListener('mousemove', (e) => {
+      if (!this.painting || this.tool === 'fill') return;
+      this._handlePaint(e, tab);
     });
     window.addEventListener('mouseup', () => { this.painting = false; });
 
-    // Touch support
-    this.canvas.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      this.painting = true;
-      this._handlePaint(e.touches[0] as any);
+    canvas.addEventListener('touchstart',  (e) => {
+      e.preventDefault(); this.painting = true;
+      this._handlePaint(e.touches[0] as any, tab);
     }, { passive: false });
-    this.canvas.addEventListener('touchmove', (e) => {
+    canvas.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (!this.painting || this.tool === 'fill') return;
-      this._handlePaint(e.touches[0] as any);
+      this._handlePaint(e.touches[0] as any, tab);
     }, { passive: false });
-    this.canvas.addEventListener('touchend', () => { this.painting = false; });
+    canvas.addEventListener('touchend', () => { this.painting = false; });
   }
 
-  private _getCellFromEvent(e: MouseEvent): { col: number; row: number } {
-    const rect = this.canvas.getBoundingClientRect();
-    const scaleX = CANVAS_W / rect.width;
-    const scaleY = CANVAS_H / rect.height;
-    const col = Math.floor((e.clientX - rect.left) * scaleX / CELL);
-    const row = Math.floor((e.clientY - rect.top)  * scaleY / CELL);
-    return { col, row };
+  private _getCell(e: MouseEvent, tab: TabMode): { col: number; row: number } {
+    const canvas = tab === 'body' ? this.bodyCanvas : this.wheelCanvas;
+    const cols   = tab === 'body' ? CUSTOM_GRID_COLS  : CUSTOM_WHEEL_COLS;
+    const rows   = tab === 'body' ? CUSTOM_GRID_ROWS  : CUSTOM_WHEEL_ROWS;
+    const cW     = tab === 'body' ? BODY_W  : WHEEL_W;
+    const cH     = tab === 'body' ? BODY_H  : WHEEL_H;
+
+    const rect   = canvas.getBoundingClientRect();
+    const scaleX = cW / rect.width;
+    const scaleY = cH / rect.height;
+    const cellW  = cW / cols;
+    const cellH  = cH / rows;
+
+    return {
+      col: Math.floor((e.clientX - rect.left) * scaleX / cellW),
+      row: Math.floor((e.clientY - rect.top)  * scaleY / cellH),
+    };
   }
 
-  private _handlePaint(e: MouseEvent): void {
-    const { col, row } = this._getCellFromEvent(e);
-    if (col < 0 || col >= CUSTOM_GRID_COLS || row < 0 || row >= CUSTOM_GRID_ROWS) return;
+  private _handlePaint(e: MouseEvent, tab: TabMode): void {
+    const cols = tab === 'body' ? CUSTOM_GRID_COLS  : CUSTOM_WHEEL_COLS;
+    const rows = tab === 'body' ? CUSTOM_GRID_ROWS  : CUSTOM_WHEEL_ROWS;
+    const grid = tab === 'body' ? this.bodyGrid     : this.wheelGrid;
+
+    const { col, row } = this._getCell(e, tab);
+    if (col < 0 || col >= cols || row < 0 || row >= rows) return;
 
     if (this.tool === 'fill') {
-      this._pushHistory();
-      this._floodFill(col, row, this.grid[row][col], this.activeColor);
+      this._pushHistory(tab);
+      this._floodFill(grid, col, row, cols, rows, grid[row][col], this.activeColor);
     } else {
       const newColor = this.tool === 'eraser' ? 0 : this.activeColor;
-      if (this.grid[row][col] === newColor) return;
-      if (!this.painting || this.tool !== 'eraser') this._pushHistory(); // only one history per stroke
-      this.grid[row][col] = newColor;
+      if (grid[row][col] === newColor) return;
+      this._pushHistory(tab);
+      grid[row][col] = newColor;
     }
-    this.render();
+    tab === 'body' ? this.renderBody() : this.renderWheel();
   }
 
-  // ── Flood Fill (BFS) ───────────────────────────────────────
-  private _floodFill(startCol: number, startRow: number, targetColor: number, fillColor: number): void {
-    if (targetColor === fillColor) return;
+  // ── Flood Fill ────────────────────────────────────────────
+  private _floodFill(
+    grid: number[][], startCol: number, startRow: number,
+    cols: number, rows: number, target: number, fill: number
+  ): void {
+    if (target === fill) return;
     const queue: [number, number][] = [[startCol, startRow]];
     const visited = new Set<string>();
-
     while (queue.length > 0) {
       const [c, r] = queue.shift()!;
       const key = `${c},${r}`;
       if (visited.has(key)) continue;
-      if (c < 0 || c >= CUSTOM_GRID_COLS || r < 0 || r >= CUSTOM_GRID_ROWS) continue;
-      if (this.grid[r][c] !== targetColor) continue;
-
+      if (c < 0 || c >= cols || r < 0 || r >= rows) continue;
+      if (grid[r][c] !== target) continue;
       visited.add(key);
-      this.grid[r][c] = fillColor;
-      queue.push([c + 1, r], [c - 1, r], [c, r + 1], [c, r - 1]);
+      grid[r][c] = fill;
+      queue.push([c+1,r],[c-1,r],[c,r+1],[c,r-1]);
     }
   }
 
   // ── History ────────────────────────────────────────────────
-  private _pushHistory(): void {
-    if (this.history.length > 40) this.history.shift();
-    this.history.push(this.grid.map(row => [...row]));
+  private _pushHistory(tab: TabMode): void {
+    const hist = tab === 'body' ? this.bodyHistory : this.wheelHistory;
+    const grid = tab === 'body' ? this.bodyGrid    : this.wheelGrid;
+    if (hist.length > 40) hist.shift();
+    hist.push(grid.map(row => [...row]));
   }
 
   private _undo(): void {
-    if (this.history.length === 0) return;
-    this.grid = this.history.pop()!;
-    this.render();
+    if (this.mode === 'body') {
+      if (this.bodyHistory.length === 0) return;
+      this.bodyGrid = this.bodyHistory.pop()!;
+      this.renderBody();
+    } else {
+      if (this.wheelHistory.length === 0) return;
+      this.wheelGrid = this.wheelHistory.pop()!;
+      this.renderWheel();
+    }
   }
 
   // ── Actions ────────────────────────────────────────────────
   private _reset(): void {
-    this._pushHistory();
-    this.grid = makeBlankGrid();
-    this.render();
+    if (this.mode === 'body') {
+      this._pushHistory('body');
+      this.bodyGrid = makeBlankGrid();
+      this.renderBody();
+    } else {
+      this._pushHistory('wheel');
+      this.wheelGrid = makeBlankWheelGrid();
+      this.renderWheel();
+    }
   }
 
   private _loadDefault(): void {
-    this._pushHistory();
-    this.grid = makeDefaultGrid();
-    this.render();
+    this._pushHistory('body');
+    this._pushHistory('wheel');
+    this.bodyGrid  = makeDefaultBodyGrid();
+    this.wheelGrid = makeDefaultWheelGrid();
+    this.renderBoth();
+  }
+
+  private _getVehicleName(): string {
+    const inp = document.getElementById('pe-vehicle-name') as HTMLInputElement;
+    return inp?.value.trim() || 'Xe Pixel Tùy Chỉnh';
+  }
+
+  private _saveDraft(): void {
+    const draft = {
+      bodyGrid:  this.bodyGrid.map(r => [...r]),
+      wheelGrid: this.wheelGrid.map(r => [...r]),
+      name: this._getVehicleName(),
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    this._showEditorToast('📋 Đã lưu nháp!');
+  }
+
+  private _loadDraft(): void {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.bodyGrid)  this.bodyGrid  = d.bodyGrid;
+      if (d.wheelGrid) this.wheelGrid = d.wheelGrid;
+      if (d.name) {
+        const inp = document.getElementById('pe-vehicle-name') as HTMLInputElement;
+        if (inp) inp.value = d.name;
+      }
+    } catch (_) { /* silent */ }
   }
 
   private _apply(): void {
-    // Deep-copy to avoid mutation issues
-    this.onApply(this.grid.map(row => [...row]));
+    const name = this._getVehicleName();
+    const id   = `custom_${Date.now()}`;
+    const entry: SavedVehicle = {
+      id, name,
+      bodyGrid:  this.bodyGrid.map(r => [...r]),
+      wheelGrid: this.wheelGrid.map(r => [...r]),
+    };
+    this._saveToStorage(entry);
+    this.onApply(entry.bodyGrid, entry.wheelGrid, name, id);
+    this._renderSavedList();
     this.close();
   }
 
+  // ── LocalStorage ──────────────────────────────────────────
+  private _getSaved(): SavedVehicle[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) { return []; }
+  }
+
+  private _saveToStorage(entry: SavedVehicle): void {
+    const list = this._getSaved().filter(v => v.id !== entry.id);
+    list.unshift(entry); // newest first
+    if (list.length > 20) list.length = 20; // max 20 saved
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  /** Called from main.ts to load a saved vehicle into the editor */
+  loadSaved(v: SavedVehicle): void {
+    this.bodyGrid  = v.bodyGrid.map(r => [...r]);
+    this.wheelGrid = v.wheelGrid.map(r => [...r]);
+    const inp = document.getElementById('pe-vehicle-name') as HTMLInputElement;
+    if (inp) inp.value = v.name;
+    this.renderBoth();
+  }
+
+  /** Return all saved vehicles (for rebuilding dropdown) */
+  getSavedVehicles(): SavedVehicle[] {
+    return this._getSaved();
+  }
+
+  // ── Saved vehicles list inside the editor ─────────────────
+  private _renderSavedList(): void {
+    const list = document.getElementById('pe-saved-list');
+    if (!list) return;
+    const saved = this._getSaved();
+    if (saved.length === 0) {
+      list.innerHTML = '<p style="color:var(--muted);font-size:.75rem;">Chưa có mẫu xe nào được lưu.</p>';
+      return;
+    }
+    list.innerHTML = '';
+    saved.forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'pe-saved-item';
+      row.innerHTML = `
+        <span class="pe-saved-name">🎨 ${v.name}</span>
+        <button class="pe-saved-load" data-id="${v.id}" title="Tải vào editor">✏️</button>
+        <button class="pe-saved-apply" data-id="${v.id}" title="Áp dụng ngay">▶</button>
+        <button class="pe-saved-del" data-id="${v.id}" title="Xóa">🗑</button>
+      `;
+      row.querySelector('.pe-saved-load')!.addEventListener('click', () => {
+        this.loadSaved(v);
+        this._showEditorToast(`📂 Đã tải "${v.name}" vào editor`);
+      });
+      row.querySelector('.pe-saved-apply')!.addEventListener('click', () => {
+        this.onApply(v.bodyGrid, v.wheelGrid, v.name, v.id);
+        this.close();
+      });
+      row.querySelector('.pe-saved-del')!.addEventListener('click', () => {
+        this._deleteFromStorage(v.id);
+        this._renderSavedList();
+      });
+      list.appendChild(row);
+    });
+  }
+
+  private _deleteFromStorage(id: string): void {
+    const list = this._getSaved().filter(v => v.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  private _showEditorToast(msg: string): void {
+    const t = document.getElementById('pe-toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('visible');
+    setTimeout(() => t.classList.remove('visible'), 2000);
+  }
+
   // ── Render ─────────────────────────────────────────────────
-  render(): void {
-    const ctx = this.ctx;
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  renderBoth(): void {
+    this.renderBody();
+    this.renderWheel();
+  }
 
-    for (let row = 0; row < CUSTOM_GRID_ROWS; row++) {
-      for (let col = 0; col < CUSTOM_GRID_COLS; col++) {
-        const color = this.grid[row][col];
-        const x = col * CELL;
-        const y = row * CELL;
+  renderBody(): void {
+    this._renderGrid(
+      this.bodyCtx, this.bodyGrid,
+      CUSTOM_GRID_COLS, CUSTOM_GRID_ROWS,
+      BODY_CELL, BODY_W, BODY_H
+    );
+  }
 
+  renderWheel(): void {
+    this._renderGrid(
+      this.wheelCtx, this.wheelGrid,
+      CUSTOM_WHEEL_COLS, CUSTOM_WHEEL_ROWS,
+      WHEEL_CELL, WHEEL_W, WHEEL_H
+    );
+  }
+
+  private _renderGrid(
+    ctx: CanvasRenderingContext2D,
+    grid: number[][],
+    cols: number, rows: number,
+    cell: number, cW: number, cH: number
+  ): void {
+    ctx.clearRect(0, 0, cW, cH);
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const color = grid[r]?.[c] ?? 0;
+        const x = c * cell; const y = r * cell;
         if (color === 0) {
-          // Transparent - draw checker
-          ctx.fillStyle = (col + row) % 2 === 0 ? '#1c1e2e' : '#222436';
-          ctx.fillRect(x, y, CELL, CELL);
+          ctx.fillStyle = (c + r) % 2 === 0 ? '#1c1e2e' : '#222436';
         } else {
           ctx.fillStyle = hexToCSS(color);
-          ctx.fillRect(x, y, CELL, CELL);
         }
+        ctx.fillRect(x, y, cell, cell);
       }
     }
 
     // Grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
     ctx.lineWidth = 0.5;
-    for (let col = 0; col <= CUSTOM_GRID_COLS; col++) {
-      ctx.beginPath();
-      ctx.moveTo(col * CELL, 0);
-      ctx.lineTo(col * CELL, CANVAS_H);
-      ctx.stroke();
+    for (let c = 0; c <= cols; c++) {
+      ctx.beginPath(); ctx.moveTo(c * cell, 0); ctx.lineTo(c * cell, cH); ctx.stroke();
     }
-    for (let row = 0; row <= CUSTOM_GRID_ROWS; row++) {
-      ctx.beginPath();
-      ctx.moveTo(0, row * CELL);
-      ctx.lineTo(CANVAS_W, row * CELL);
-      ctx.stroke();
+    for (let r = 0; r <= rows; r++) {
+      ctx.beginPath(); ctx.moveTo(0, r * cell); ctx.lineTo(cW, r * cell); ctx.stroke();
     }
   }
 }

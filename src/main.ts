@@ -347,17 +347,61 @@ vehicleSelect.addEventListener('change', () => {
 });
 
 // ─── Pixel Art Editor Bootstrap ───────────────────────────────
-// applyCustomVehicle: update strategy + rebuild vehicle on-the-fly
-function applyCustomVehicle(grid: number[][]): void {
-  customVehicleStrategy.updateGrid(grid);
-  if (currentVehicleId === 'custom') {
-    vehicle.destroy();
-    vehicle = new Vehicle(app, currentVehicleCfg, vehicleLayer);
+function applyCustomVehicle(
+  bodyGrid: number[][], wheelGrid: number[][], name: string, id: string
+): void {
+  // 1. Update the strategy pixel data
+  customVehicleStrategy.updateGrid(bodyGrid, wheelGrid);
+
+  // 2. Ensure 'custom' config is set so vehicle uses CustomVehicleStrategy
+  const customCfg = getVehicleById('custom')!;
+  currentVehicleId  = 'custom';
+  currentVehicleCfg = customCfg;
+
+  // 3. Rebuild vehicle
+  vehicle.destroy();
+  vehicle = new Vehicle(app, currentVehicleCfg, vehicleLayer);
+
+  // 4. Sync the dropdown — add option if it's a new named save, or select 'custom'
+  const vSelect = vehicleSelect;
+  let opt = Array.from(vSelect.options).find(o => o.value === id);
+  if (!opt) {
+    // See if there's an existing option for this id to avoid duplicates
+    opt = document.createElement('option');
+    opt.value = id;
+    vSelect.appendChild(opt);
   }
-  showToast('🎨 Xe thiết kế riêng đã được áp dụng!');
+  opt.textContent = `🎨 ${name}`;
+  vSelect.value = id;
+
+  // 5. Toast
+  showToast(`🎨 Áp dụng xe “${name}” thành công!`);
 }
 
 const pixelEditor = new PixelEditor(applyCustomVehicle);
+
+// On start, rebuild dropdown with any saved vehicles from localStorage
+(function _restoreSavedVehicles() {
+  pixelEditor.getSavedVehicles().forEach(v => {
+    const vSelect = vehicleSelect;
+    if (!Array.from(vSelect.options).find(o => o.value === v.id)) {
+      const opt = document.createElement('option');
+      opt.value = v.id;
+      opt.textContent = `🎨 ${v.name}`;
+      vSelect.appendChild(opt);
+    }
+  });
+  // Wire saved-vehicle clicks from dropdown (id starts with 'custom_')
+  vehicleSelect.addEventListener('change', () => {
+    const val = vehicleSelect.value;
+    if (val.startsWith('custom_')) {
+      const saved = pixelEditor.getSavedVehicles().find(v => v.id === val);
+      if (saved) {
+        applyCustomVehicle(saved.bodyGrid, saved.wheelGrid, saved.name, saved.id);
+      }
+    }
+  });
+})();
 
 // Expose globally so the inline <script> design button can open it
 (window as any).__openPixelEditor = () => pixelEditor.open();
@@ -522,17 +566,11 @@ app.ticker.add(() => {
   }
   particles.update();
 
-  // Camera shake on bass kick — clamped to avoid runaway drift
+  // Camera shake on bass kick — decays automatically, never drifts
   if (ad.isBassKick && ad.isPlaying) {
     camera.shake(Math.min(ad.bassEnergy * 2.0, 8));
   }
-  // Always update camera so shake decays each frame
-  camera.update(app.screen.width, app.screen.height);
-
-  // When music pauses/stops, snap camera back to origin
-  if (!ad.isPlaying) {
-    camera.resetPosition();
-  }
+  camera.decayShake(); // decay shake each frame, no position lerp needed
 
   // Sky colour time-sync
   if (ad.duration > 0) {
