@@ -624,7 +624,7 @@
       gap: 8px;
     }
     .pe-color-panel .pe-palette { display: flex; flex-wrap: wrap; gap: 4px; }
-    .pe-color-panel .pe-palette .pe-swatch { width: 17px; height: 17px; }
+    .pe-color-panel .pe-palette .pe-swatch { width: 26px; height: 26px; }
     /* inner sizing set by JS zoom */
     .pe-canvas-inner {
       position: relative;
@@ -635,7 +635,7 @@
       display: block;
       image-rendering: pixelated;
     }
-    #pe-preview-canvas {
+    #pe-preview-canvas, #pe-wheel-preview-canvas {
       position: absolute;
       top: 0; left: 0;
       pointer-events: none;
@@ -1181,6 +1181,7 @@
               <div class="pe-canvas-wrap" id="pe-wheel-wrap" style="display:none">
                 <div class="pe-canvas-inner" id="pe-wheel-inner">
                   <canvas id="pe-wheel-canvas"></canvas>
+                  <canvas id="pe-wheel-preview-canvas"></canvas>
                 </div>
               </div>
               <div id="pe-saved-wrap" style="display:none">
@@ -1271,7 +1272,7 @@
       if (!wrap || !textEl) return;
       // Compare first text node width vs container width
       if (textEl.scrollWidth > wrap.clientWidth + 2) {
-        const spd = 50; // px per second
+        const spd = 25; // px per second (reduced 50%)
         const dur = Math.max(3, textEl.scrollWidth / spd);
         el.style.setProperty('--td', `${dur}s`);
         el.classList.add('scrolling');

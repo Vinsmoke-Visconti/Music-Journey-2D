@@ -58,7 +58,10 @@ export class PixelEditor {
   private bodyCanvas!:HTMLCanvasElement;  private bodyCtx!:CanvasRenderingContext2D;
   private wheelCanvas!:HTMLCanvasElement; private wheelCtx!:CanvasRenderingContext2D;
   private previewCanvas!:HTMLCanvasElement; private previewCtx!:CanvasRenderingContext2D;
+  private wheelPreviewCanvas!:HTMLCanvasElement; private wheelPreviewCtx!:CanvasRenderingContext2D;
   private vehiclePreview!:HTMLCanvasElement; private vehicleCtx!:CanvasRenderingContext2D;
+
+  private currentEditId: string | null = null;
 
   private onApply:(b:number[][],w:number[][],name:string,id:string,off:{bodyYOff:number,wheelYOff:number,wheelDist:number})=>void;
 
@@ -67,13 +70,16 @@ export class PixelEditor {
     this.bodyCanvas   = document.getElementById('pe-body-canvas')   as HTMLCanvasElement;
     this.wheelCanvas  = document.getElementById('pe-wheel-canvas')  as HTMLCanvasElement;
     this.previewCanvas= document.getElementById('pe-preview-canvas')as HTMLCanvasElement;
+    this.wheelPreviewCanvas= document.getElementById('pe-wheel-preview-canvas')as HTMLCanvasElement;
     this.vehiclePreview=document.getElementById('pe-vehicle-preview') as HTMLCanvasElement;
     this.bodyCanvas.width=BODY_W;   this.bodyCanvas.height=BODY_H;
     this.wheelCanvas.width=WHEEL_W; this.wheelCanvas.height=WHEEL_H;
     this.previewCanvas.width=BODY_W;this.previewCanvas.height=BODY_H;
+    this.wheelPreviewCanvas.width=WHEEL_W;this.wheelPreviewCanvas.height=WHEEL_H;
     this.bodyCtx    = this.bodyCanvas.getContext('2d')!;
     this.wheelCtx   = this.wheelCanvas.getContext('2d')!;
     this.previewCtx = this.previewCanvas.getContext('2d')!;
+    this.wheelPreviewCtx = this.wheelPreviewCanvas.getContext('2d')!;
     this.vehicleCtx = this.vehiclePreview.getContext('2d')!;
     this._buildPalette();
     this._bindEvents();
@@ -226,6 +232,7 @@ export class PixelEditor {
     }
     this.dragStart=null;
     this.previewCtx.clearRect(0,0,BODY_W,BODY_H);
+    this.wheelPreviewCtx.clearRect(0,0,WHEEL_W,WHEEL_H);
   };
 
   private _getCell(e:{clientX:number;clientY:number},tab:TabMode):{col:number;row:number}{
@@ -261,21 +268,22 @@ export class PixelEditor {
 
   // ── Shape preview ─────────────────────────────────────────
   private _drawPreview(e:MouseEvent,tab:TabMode){
-    if(!this.dragStart||tab!=='body')return;
-    const {col,row}=this._getCell(e,'body');
-    const cell=BODY_CELL;
-    this.previewCtx.clearRect(0,0,BODY_W,BODY_H);
-    this.previewCtx.strokeStyle=numToCSS(this.color);
-    this.previewCtx.lineWidth=cell;
-    this.previewCtx.beginPath();
+    if(!this.dragStart)return;
+    const {col,row}=this._getCell(e,tab);
+    const cell=tab==='body'?BODY_CELL:WHEEL_CELL;
+    const ctx=tab==='body'?this.previewCtx:this.wheelPreviewCtx;
+    ctx.clearRect(0,0,tab==='body'?BODY_W:WHEEL_W,tab==='body'?BODY_H:WHEEL_H);
+    ctx.strokeStyle=numToCSS(this.color);
+    ctx.lineWidth=cell;
+    ctx.beginPath();
     if(this.tool==='line'){
-      this.previewCtx.moveTo(this.dragStart.col*cell+cell/2,this.dragStart.row*cell+cell/2);
-      this.previewCtx.lineTo(col*cell+cell/2,row*cell+cell/2);
+      ctx.moveTo(this.dragStart.col*cell+cell/2,this.dragStart.row*cell+cell/2);
+      ctx.lineTo(col*cell+cell/2,row*cell+cell/2);
     }else if(this.tool==='circle'){
       const r=Math.hypot(col-this.dragStart.col,row-this.dragStart.row)*cell;
-      this.previewCtx.arc(this.dragStart.col*cell+cell/2,this.dragStart.row*cell+cell/2,r,0,Math.PI*2);
+      ctx.arc(this.dragStart.col*cell+cell/2,this.dragStart.row*cell+cell/2,r,0,Math.PI*2);
     }
-    this.previewCtx.stroke();
+    ctx.stroke();
   }
 
   private _commitShape(e:MouseEvent,tab:TabMode){
@@ -361,10 +369,12 @@ export class PixelEditor {
 
   // ── Actions ───────────────────────────────────────────────
   private _reset(){
+    this.currentEditId = null;
     if(this.mode==='body'){this._pushHistory('body');this.bodyGrid=makeBlankGrid();this.renderBody();}
     else if(this.mode==='wheel'){this._pushHistory('wheel');this.wheelGrid=makeBlankWheelGrid();this.renderWheel();}
   }
   private _loadDefault(){
+    this.currentEditId = null;
     this._pushHistory('body');this._pushHistory('wheel');
     this.bodyGrid=makeDefaultBodyGrid();this.wheelGrid=makeDefaultWheelGrid();
     this.renderBoth();
@@ -381,9 +391,10 @@ export class PixelEditor {
     }catch(_){}
   }
   private _apply(){
-    const name=this._getName(),id=`custom_${Date.now()}`;
+    const name=this._getName(),id=this.currentEditId||`custom_${Date.now()}`;
     const off={bodyYOff:this.bodyYOff,wheelYOff:this.wheelYOff,wheelDist:this.wheelDist};
     const entry:SavedVehicle={id,name,bodyGrid:this.bodyGrid.map(r=>[...r]),wheelGrid:this.wheelGrid.map(r=>[...r])};
+    this.currentEditId = id; // update tracking ID just in case
     this._saveToStorage(entry);
     this.onApply(entry.bodyGrid,entry.wheelGrid,name,id,off);
     this._renderSavedList();
@@ -397,6 +408,7 @@ export class PixelEditor {
 
   getSavedVehicles():SavedVehicle[]{return this._getSaved();}
   loadSaved(v:SavedVehicle){
+    this.currentEditId = v.id;
     this.bodyGrid=v.bodyGrid.map(r=>[...r]);this.wheelGrid=v.wheelGrid.map(r=>[...r]);
     (document.getElementById('pe-vehicle-name') as HTMLInputElement).value=v.name;
     this.renderBoth();
