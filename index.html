@@ -366,7 +366,7 @@
       right: 20px;
       bottom: 115px;
       z-index: 12;
-      width: 260px;
+      width: 280px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -374,37 +374,71 @@
       box-shadow: var(--shadow);
       padding: 12px;
       display: none;
-      max-height: 350px;
+      max-height: 400px;
       overflow-y: auto;
     }
     /* Tùy chỉnh thanh cuộn (Custom Scrollbar) */
-    #playlist-panel::-webkit-scrollbar {
-      width: 5px;
-    }
-    #playlist-panel::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    #playlist-panel::-webkit-scrollbar-thumb {
-      background: var(--accent);
-      border-radius: 10px;
-      opacity: 0.5;
-    }
-    #playlist-panel::-webkit-scrollbar-thumb:hover {
-      background: #fff;
-    }
+    #playlist-panel::-webkit-scrollbar { width: 5px; }
+    #playlist-panel::-webkit-scrollbar-track { background: transparent; }
+    #playlist-panel::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+    #playlist-panel::-webkit-scrollbar-thumb:hover { background: #fff; }
     #playlist-panel.open { display: block; animation: slideUp .2s ease; }
     @keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; } }
-    #playlist-panel h3 {
+
+    /* Playlist header row */
+    .playlist-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .playlist-header h3 {
       font-size: .75rem;
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-      margin-bottom: 10px;
+      margin-bottom: 0;
+    }
+
+    /* Upload button */
+    #upload-track-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px dashed var(--accent);
+      background: rgba(249,199,79,.08);
+      color: var(--accent);
+      font-family: 'Outfit', sans-serif;
+      font-size: .72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    #upload-track-btn:hover {
+      background: rgba(249,199,79,.18);
+      transform: scale(1.04);
+    }
+    #upload-track-btn .upload-icon { font-size: .9rem; }
+    /* Hidden file input */
+    #custom-track-input { display: none; }
+
+    /* Custom track badge */
+    .pl-badge-custom {
+      font-size: .62rem;
+      padding: 1px 6px;
+      border-radius: 20px;
+      background: rgba(249,199,79,.18);
+      color: var(--accent);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .pl-item {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       padding: 8px 10px;
       border-radius: var(--radius-sm);
       cursor: pointer;
@@ -417,7 +451,8 @@
       color: var(--accent);
       font-weight: 600;
     }
-    .pl-num { color: var(--muted); font-size: .72rem; width: 16px; text-align: center; }
+    .pl-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pl-num { color: var(--muted); font-size: .72rem; width: 16px; text-align: center; flex-shrink: 0; }
 
     /* ─────────────── LOCK TOAST ─────────────── */
     #lock-toast {
@@ -450,6 +485,164 @@
       .progress-wrap { width: 100%; }
       #hud { display: none; }
     }
+
+    /* ─────────────── PIXEL ART EDITOR MODAL ─────────────── */
+    #pixel-editor-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+    }
+    #pixel-editor-overlay.open { display: flex; animation: fadeIn .2s ease; }
+
+    #pixel-editor-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 24px 64px rgba(0,0,0,.7);
+      padding: 20px 24px;
+      width: min(720px, 96vw);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 96vh;
+      overflow-y: auto;
+    }
+    .pe-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .pe-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .72rem;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+    #pe-close-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.3rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: color var(--transition), background var(--transition);
+    }
+    #pe-close-btn:hover { color: var(--text); background: var(--surface2); }
+
+    /* Toolbar */
+    .pe-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .pe-tool-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: .78rem;
+      font-family: 'Outfit', sans-serif;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .pe-tool-btn:hover { background: rgba(255,255,255,.12); }
+    .pe-tool-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .pe-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+    /* Canvas wrapper */
+    .pe-canvas-wrap {
+      position: relative;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      cursor: crosshair;
+      background: repeating-conic-gradient(#1c1e2e 0% 25%, #222436 0% 50%) 0 0 / 16px 16px;
+      line-height: 0;
+    }
+    #pe-canvas { display: block; image-rendering: pixelated; }
+
+    /* Palette */
+    .pe-palette-label {
+      font-size: .72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .pe-palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .pe-swatch {
+      width: 28px; height: 28px;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform .1s, border-color .1s;
+    }
+    .pe-swatch:hover { transform: scale(1.15); }
+    .pe-swatch.active {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px var(--accent);
+      transform: scale(1.1);
+    }
+    /* Eraser swatch (transparent) */
+    .pe-swatch-eraser {
+      background: repeating-conic-gradient(#555 0% 25%, #333 0% 50%) 0 0 / 10px 10px;
+    }
+
+    /* Action buttons */
+    .pe-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .pe-btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      font-family: 'Outfit', sans-serif;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .pe-btn-reset  { background: var(--surface2); color: var(--text); }
+    .pe-btn-reset:hover { background: rgba(239,68,68,.2); border-color: #ef4444; color: #ef4444; }
+    .pe-btn-default { background: var(--surface2); color: var(--muted); }
+    .pe-btn-default:hover { background: rgba(255,255,255,.1); color: var(--text); }
+    .pe-btn-apply  {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #000; border-color: transparent;
+    }
+    .pe-btn-apply:hover { opacity: .88; transform: translateY(-1px); }
+
+    /* Design button in top bar */
+    #design-btn {
+      background: var(--surface);
+      border: 1px solid rgba(83,52,131,.6);
+      color: #a78bfa;
+      font-family: 'Outfit', sans-serif;
+      font-size: .82rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition);
+      backdrop-filter: var(--blur);
+    }
+    #design-btn:hover { background: rgba(83,52,131,.4); border-color: #a78bfa; }
   </style>
 </head>
 <body>
@@ -472,6 +665,7 @@
   <div id="top-bar">
     <div class="logo">🚐 MUSIC JOURNEY 2D</div>
     <div class="top-selects">
+      <button id="design-btn">🎨 Thiết kế xe</button>
       <button id="shop-btn">🛒 Shop</button>
       <button id="auth-btn">Loading...</button>
       <select id="env-select" title="Chọn môi trường">
@@ -484,6 +678,7 @@
         <option value="van">🚐 Xe Van (Miễn phí)</option>
         <option value="jeep">🔒 Jeep Địa Hình – 49k</option>
         <option value="pickup">🔒 Xe Bán Tải – 39k</option>
+        <option value="custom">🎨 Xe Tự Thiết Kế</option>
       </select>
     </div>
   </div>
@@ -512,7 +707,13 @@
 
   <!-- Playlist Panel -->
   <div id="playlist-panel">
-    <h3>📋 Playlist</h3>
+    <div class="playlist-header">
+      <h3>📋 Playlist</h3>
+      <button id="upload-track-btn" title="Tải nhạc từ máy tính">
+        <span class="upload-icon">📂</span> + Tải Nhạc
+      </button>
+    </div>
+    <input type="file" id="custom-track-input" accept="audio/*" multiple />
     <div id="playlist-items"></div>
   </div>
 
@@ -553,21 +754,45 @@
 
     </div>
   </div>
+  <!-- Pixel Art Editor Modal -->
+  <div id="pixel-editor-overlay">
+    <div id="pixel-editor-modal">
+      <div class="pe-header">
+        <span class="pe-title">🎨 PIXEL ART VEHICLE DESIGNER</span>
+        <button id="pe-close-btn" title="Đóng">✕</button>
+      </div>
+      <div class="pe-toolbar">
+        <button class="pe-tool-btn active" id="pe-tool-pen"    title="Bút vẽ (P)">✏️ Bút</button>
+        <button class="pe-tool-btn"        id="pe-tool-eraser" title="Tẩy (E)">🧹 Tẩy</button>
+        <button class="pe-tool-btn"        id="pe-tool-fill"   title="Đổ màu (F)">🪣 Đổ màu</button>
+        <div class="pe-sep"></div>
+        <button class="pe-tool-btn"        id="pe-tool-undo"   title="Hoàn tác (Ctrl+Z)">↩️ Hoàn tác</button>
+      </div>
+      <div class="pe-canvas-wrap" id="pe-canvas-wrap">
+        <canvas id="pe-canvas"></canvas>
+      </div>
+      <div>
+        <div class="pe-palette-label">Bảng màu</div>
+        <div class="pe-palette" id="pe-palette"></div>
+      </div>
+      <div class="pe-actions">
+        <button class="pe-btn pe-btn-reset"   id="pe-reset-btn">↺ Xóa trắng</button>
+        <button class="pe-btn pe-btn-default" id="pe-default-btn">🚐 Mẫu mặc định</button>
+        <button class="pe-btn pe-btn-apply"   id="pe-apply-btn">✅ Áp dụng lên xe</button>
+      </div>
+    </div>
+  </div>
 
 </div>
 
 <script>
-  // Playlist panel toggle
   document.getElementById('playlist-btn').addEventListener('click', () => {
     document.getElementById('playlist-panel').classList.toggle('open');
   });
 
-  // Click playlist item
   document.querySelectorAll('.pl-item').forEach(el => {
     el.addEventListener('click', () => {
       const idx = parseInt(el.dataset.idx);
-      // loadTrack được gọi từ main.ts qua global nếu cần
-      // Đây là fallback nếu main.ts đã expose
       if (window.__loadTrack) {
         window.__loadTrack(idx);
         const audioEl = document.getElementById('audio-el');
@@ -578,7 +803,6 @@
     });
   });
 
-  // Album art animation khi play/pause
   document.getElementById('audio-el').addEventListener('play', () => {
     document.getElementById('album-art').classList.add('playing');
   });
@@ -586,13 +810,17 @@
     document.getElementById('album-art').classList.remove('playing');
   });
 
-  // Đóng playlist khi click ra ngoài
   document.addEventListener('click', (e) => {
     const panel = document.getElementById('playlist-panel');
     const btn   = document.getElementById('playlist-btn');
     if (!panel.contains(e.target) && e.target !== btn) {
       panel.classList.remove('open');
     }
+  });
+
+  // Design button → open pixel editor via global bridge from main.ts
+  document.getElementById('design-btn').addEventListener('click', () => {
+    if (window.__openPixelEditor) window.__openPixelEditor();
   });
 </script>
 

@@ -16,8 +16,13 @@ import { shopUI } from './components/Shop';
 import { supabase, getUserInventory, signOut } from './services/supabase';
 import { processDemoPurchase } from './services/payment';
 
+import { Visualizer } from './engine/Visualizer';
+import { PixelEditor } from './engine/PixelEditor';
+import { customVehicleStrategy } from './engine/strategies/VehicleRegistry';
+import type { User } from '@supabase/supabase-js';
+
 // ─── 0. Phase 4 State ─────────────────────────────────────────
-let currentUser: any = null;
+let currentUser: User | null = null;
 let userInventory: string[] = []; 
 
 // Admin Mode check: All items unlocked if path is /admin or ?admin=true
@@ -43,20 +48,32 @@ let currentVehicleId  = 'van';
 let currentEnv        = getEnvironmentById(currentEnvId)!;
 let currentVehicleCfg = getVehicleById(currentVehicleId)!;
 
-// ─── 3. Engine systems ────────────────────────────────────────
-const parallax  = new Parallax(app);
-const road      = new Road(app);
-let   vehicle   = new Vehicle(app, currentVehicleCfg);   // ← let, not const
+// ─── 3. Layers & Engine systems ────────────────────────────────────────
+const backgroundLayer = new PIXI.Container();
+const parallaxLayer = new PIXI.Container();
+const roadLayer = new PIXI.Container();
+const vehicleLayer = new PIXI.Container();
+const effectLayer = new PIXI.Container();
+const uiLayer = new PIXI.Container(); // for future use
+
+app.stage.addChild(backgroundLayer);
+app.stage.addChild(parallaxLayer);
+app.stage.addChild(roadLayer);
+app.stage.addChild(vehicleLayer);
+app.stage.addChild(effectLayer);
+app.stage.addChild(uiLayer);
+
+const parallax  = new Parallax(app, backgroundLayer, parallaxLayer);
+const road      = new Road(app, roadLayer);
+let   vehicle   = new Vehicle(app, currentVehicleCfg, vehicleLayer);
 const camera    = new Camera(app.stage);
-const particles = new Particles(app);
+const particles = new Particles(app, effectLayer);
 const audio     = new AudioSync();
 
 parallax.loadEnvironment(currentEnv);
 road.generatePoints(app.screen.width, currentEnvId);
 road.draw(currentEnvId);
 particles.setDustColor(currentEnv.particleColor);
-// Đảm bảo lớp hạt luôn nằm trên cùng
-app.stage.addChild(particles.container);
 
 // ─── 4. DOM refs ──────────────────────────────────────────────
 const audioEl       = document.getElementById('audio-el')       as HTMLAudioElement;
@@ -73,13 +90,19 @@ const vehicleSelect = document.getElementById('vehicle-select') as HTMLSelectEle
 const stateLabel    = document.getElementById('fsm-state')      as HTMLSpanElement;
 const speedBar      = document.getElementById('speed-bar')      as HTMLDivElement;
 const bassBar       = document.getElementById('bass-bar')       as HTMLDivElement;
-const visualizerEl  = document.getElementById('visualizer')     as HTMLCanvasElement;
-const vizCtx        = visualizerEl?.getContext('2d');
+const visualizer    = new Visualizer('visualizer');
 const lockToast     = document.getElementById('lock-toast')     as HTMLDivElement;
 const albumArt      = document.getElementById('album-art')      as HTMLDivElement;
 
-// ─── 5. Playlist ──────────────────────────────────────────────
-const PLAYLIST = [
+// ─── 5. Playlist ──────────────────────────────────────────
+interface TrackEntry {
+  name: string;
+  src: string;
+  isCustom?: boolean;
+  objectUrl?: string; // For revocation later
+}
+
+let PLAYLIST: TrackEntry[] = [
   { name: '🎵 Viper Beat (Original)', src: 'https://raw.githubusercontent.com/mdn/webaudio-examples/main/audio-analyser/viper.mp3' },
   { name: '🐉 Lạc Trôi - Sơn Tùng M-TP', src: './assets/audio/Lạc Trôi_Sơn Tùng M-TP_-1075806563.mp3' },
   { name: '🎹 Giorno\'s Theme - JJBA', src: './assets/audio/JoJos Bizarre AdventureGolden Wind OST _Giornos Theme_ Il vento doro (Main Theme).mp3' },
@@ -112,7 +135,11 @@ function renderPlaylist(): void {
     const item = document.createElement('div');
     item.className = 'pl-item' + (i === trackIndex ? ' active' : '');
     item.setAttribute('data-idx', i.toString());
-    item.innerHTML = `<span class="pl-num">${i + 1}</span> ${track.name}`;
+    item.innerHTML = `
+      <span class="pl-num">${i + 1}</span>
+      <span class="pl-name">${track.name}</span>
+      ${track.isCustom ? '<span class="pl-badge-custom">📲 Local</span>' : ''}
+    `;
     item.onclick = () => {
       loadTrack(i);
       forcePlayAudio();
@@ -123,6 +150,46 @@ function renderPlaylist(): void {
 
 // Expose globally so playlist panel clicks work
 (window as any).__loadTrack = loadTrack;
+
+// ─── Custom Track Upload Handler ───────────────────────────────
+const uploadBtn   = document.getElementById('upload-track-btn') as HTMLButtonElement | null;
+const uploadInput = document.getElementById('custom-track-input') as HTMLInputElement | null;
+
+if (uploadBtn && uploadInput) {
+  // Click the hidden input when button is pressed
+  uploadBtn.addEventListener('click', () => uploadInput.click());
+
+  uploadInput.addEventListener('change', () => {
+    const files = uploadInput.files;
+    if (!files || files.length === 0) return;
+
+    const firstNewIdx = PLAYLIST.length;
+    Array.from(files).forEach(file => {
+      // Revoke old URLs to prevent memory leak (if re-uploading same name)
+      const existing = PLAYLIST.find(t => t.isCustom && t.name.includes(file.name));
+      if (existing?.objectUrl) URL.revokeObjectURL(existing.objectUrl);
+
+      const objectUrl = URL.createObjectURL(file);
+      // Clean up file name
+      const displayName = file.name.replace(/\.(mp3|wav|ogg|flac|m4a|aac)$/i, '');
+      PLAYLIST.push({
+        name: `🎶 ${displayName}`,
+        src: objectUrl,
+        isCustom: true,
+        objectUrl
+      });
+    });
+
+    // Re-render playlist and jump to the first uploaded track
+    renderPlaylist();
+    loadTrack(firstNewIdx);
+    forcePlayAudio();
+    showToast(`✅ Đã thêm ${files.length} bài nhạc từ máy tính!`);
+
+    // Reset input so the same file can be re-selected if needed
+    uploadInput.value = '';
+  });
+}
 
 function formatTime(s: number): string {
   if (!isFinite(s)) return '0:00';
@@ -270,10 +337,30 @@ vehicleSelect.addEventListener('change', () => {
   vehicle.destroy();
   currentVehicleId  = newId;
   currentVehicleCfg = newCfg;
-  vehicle = new Vehicle(app, currentVehicleCfg);
-  // Đưa lớp hạt lên trên xe mới
-  app.stage.addChild(particles.container);
+  vehicle = new Vehicle(app, currentVehicleCfg, vehicleLayer);
+
+  // If custom selected, open pixel editor immediately
+  if (newId === 'custom') {
+    pixelEditor.open();
+    showToast('🎨 Hãy thiết kế xe của bạn và nhấn “Áp dụng”!');
+  }
 });
+
+// ─── Pixel Art Editor Bootstrap ───────────────────────────────
+// applyCustomVehicle: update strategy + rebuild vehicle on-the-fly
+function applyCustomVehicle(grid: number[][]): void {
+  customVehicleStrategy.updateGrid(grid);
+  if (currentVehicleId === 'custom') {
+    vehicle.destroy();
+    vehicle = new Vehicle(app, currentVehicleCfg, vehicleLayer);
+  }
+  showToast('🎨 Xe thiết kế riêng đã được áp dụng!');
+}
+
+const pixelEditor = new PixelEditor(applyCustomVehicle);
+
+// Expose globally so the inline <script> design button can open it
+(window as any).__openPixelEditor = () => pixelEditor.open();
 
 audioEl.addEventListener('ended', () => {
   loadTrack(trackIndex + 1);
@@ -291,7 +378,7 @@ async function initAuth() {
   if (currentUser) {
     const inv = await getUserInventory(currentUser.id);
     userInventory = inv.map(item => item.item_id);
-    console.log('[Auth] Logged in:', currentUser.email, 'Items:', userInventory);
+    console.log('[Auth] Logged in:', currentUser.email || 'Unknown', 'Items:', userInventory);
     updateSelectUI();
   }
   _updateAuthUI();
@@ -301,7 +388,7 @@ function _updateAuthUI() {
   const authBtn = document.getElementById('auth-btn');
   if (!authBtn) return;
   if (currentUser) {
-    authBtn.innerHTML = `<span class="user-email">${currentUser.email.split('@')[0]}</span> (Logout)`;
+    authBtn.innerHTML = `<span class="user-email">${currentUser.email?.split('@')[0] || 'User'}</span> (Logout)`;
     authBtn.onclick = () => signOut();
   } else {
     authBtn.innerHTML = 'Login / Sign Up';
@@ -316,7 +403,8 @@ updateSelectUI(); // Ensure UI reflects admin mode status immediately
 
 // --- Phase 5: Shop Logic ---
 async function openShop() {
-  if (!currentUser) {
+  const user = currentUser;
+  if (!user) {
     showToast('Vui lòng đăng nhập để mua sắm!');
     authUI.show();
     return;
@@ -330,7 +418,7 @@ async function openShop() {
 
     showToast(`Đang xử lý mua ${item.name}...`);
     const success = await processDemoPurchase({
-      userId: currentUser.id,
+      userId: user.id,
       itemId: itemId,
       itemType: v ? 'vehicle' : 'environment',
       amount: (item as any).price || 0
@@ -339,7 +427,7 @@ async function openShop() {
     if (success) {
       showToast(`🎉 Đã mở khóa ${item.name}!`);
       // Refresh inventory
-      const inv = await getUserInventory(currentUser.id);
+      const inv = await getUserInventory(user.id);
       userInventory = inv.map(i => i.item_id);
       updateSelectUI(); // <-- Cập nhật lại giao diện nút chọn
     } else {
@@ -354,7 +442,7 @@ function updateSelectUI() {
   const eSelect = document.getElementById('env-select') as HTMLSelectElement;
 
   if (vSelect) {
-    const vIcons: Record<string, string> = { van: '🚐', jeep: '🚙', pickup: '🛻' };
+    const vIcons: Record<string, string> = { van: '🚐', jeep: '🚙', pickup: '🛻', custom: '🎨' };
     Array.from(vSelect.options).forEach(opt => {
       const id = opt.value;
       const v = getVehicleById(id);
@@ -388,26 +476,7 @@ function updateSelectUI() {
 const shopBtn = document.getElementById('shop-btn');
 if (shopBtn) shopBtn.onclick = () => openShop();
 
-// ─── 8. Visualizer ────────────────────────────────────────────
-function drawVisualizer(data: Uint8Array | null): void {
-  if (!vizCtx || !visualizerEl) return;
-  const W = visualizerEl.width, H = visualizerEl.height;
-  vizCtx.clearRect(0, 0, W, H);
-  if (!data) return;
-
-  const bars = 60;
-  const step = Math.floor(data.length / bars);
-  const barW = W / bars - 0.5;
-
-  for (let i = 0; i < bars; i++) {
-    const val  = data[i * step] / 255;
-    const barH = val * H;
-    const hue  = 40 + i * 2.5;   // gold → coral
-    const sat  = 80 + val * 20;
-    vizCtx.fillStyle = `hsl(${hue},${sat}%,${50 + val * 20}%)`;
-    vizCtx.fillRect(i * (barW + 0.5), H - barH, barW, barH);
-  }
-}
+// ─── 8. Visualizer (Moved to Visualizer.ts) ───────────────────
 
 // ─── 9. Game Loop ─────────────────────────────────────────────
 let frameCount = 0;
@@ -427,8 +496,8 @@ app.ticker.add(() => {
   vehicle.update(gYFront, gYRear, ad.bassEnergy, ad.trebleEnergy);
   const spd = vehicle.getSpeed();
 
-  // Parallax: apply environment speedFactor and song progress
-  parallax.update(spd * currentEnv.speedFactor, ad.progress);
+  // Parallax: apply environment speedFactor, song progress, and bassEnergy for beat-reactive bounce
+  parallax.update(spd * currentEnv.speedFactor, ad.progress, ad.bassEnergy);
   road.update(spd, app.screen.width, currentEnvId);
 
   // Particles
@@ -453,9 +522,16 @@ app.ticker.add(() => {
   }
   particles.update();
 
-  // Camera shake on bass kick
+  // Camera shake on bass kick — clamped to avoid runaway drift
   if (ad.isBassKick && ad.isPlaying) {
-    camera.shake(ad.bassEnergy * 2.5);
+    camera.shake(Math.min(ad.bassEnergy * 2.0, 8));
+  }
+  // Always update camera so shake decays each frame
+  camera.update(app.screen.width, app.screen.height);
+
+  // When music pauses/stops, snap camera back to origin
+  if (!ad.isPlaying) {
+    camera.resetPosition();
   }
 
   // Sky colour time-sync
@@ -494,7 +570,7 @@ app.ticker.add(() => {
     if (analyserRef) {
       const fftData = new Uint8Array(analyserRef.frequencyBinCount);
       analyserRef.getByteFrequencyData(fftData);
-      drawVisualizer(fftData);
+      visualizer.draw(fftData);
     }
   }
 });
@@ -507,4 +583,4 @@ window.addEventListener('resize', () => {
   parallax.resize(currentEnv);
 });
 
-console.log('[Main] 🎵 Music Journey 2D — Giai đoạn 2 hoàn thiện!');
+console.log('[Main] 🎵 Music Journey 2D — Giai đoạn 5 (Refactored) hoàn thiện!');

@@ -73,7 +73,21 @@ export const vehicles: Vehicle[] = [
     isLocked: true,
     price: 39000, // VND
   },
+  {
+    id: 'custom',
+    name: '🎨 Xe Tự Thiết Kế',
+    mass: 1.5,
+    wheelOffset: 52,
+    suspensionStrength: 0.45,
+    maxSpeed: 2.24,
+    acceleration: 0.024,
+    deceleration: 0.02,
+    sprite: { body: '', wheelFront: '', wheelRear: '' },
+    isLocked: false,
+    price: null,
+  },
 ];
 
 export const getVehicleById = (id: string): Vehicle | undefined =>
   vehicles.find((v) => v.id === id);
+

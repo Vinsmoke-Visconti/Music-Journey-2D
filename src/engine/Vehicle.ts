@@ -46,7 +46,7 @@ export class Vehicle {
   private idleTime = 0;
   private bumpForce = 0;
 
-  constructor(app: PIXI.Application, config: VehicleConfig) {
+  constructor(app: PIXI.Application, config: VehicleConfig, vehicleLayer: PIXI.Container) {
     this.app = app;
     this.config = config;
     this.vehicleType = config.id;
@@ -70,7 +70,7 @@ export class Vehicle {
 
     this.container.x = app.screen.width * 0.28;
     this.container.y = app.screen.height * 0.68;
-    app.stage.addChild(this.container);
+    vehicleLayer.addChild(this.container);
   }
 
   private _setDimensions(): void {

@@ -29,10 +29,10 @@ export class Particles {
   private dustColor: number = 0xd4b483;
   private smokeColor: number = 0x888888;
 
-  constructor(app: PIXI.Application) {
+  constructor(app: PIXI.Application, effectLayer: PIXI.Container) {
     this.app = app;
     this.container = new PIXI.Container();
-    this.app.stage.addChild(this.container);
+    effectLayer.addChild(this.container);
     this._initPool();
   }
 

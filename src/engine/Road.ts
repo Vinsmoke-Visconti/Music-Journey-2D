@@ -22,12 +22,12 @@ export class Road {
   private seed = Math.random();
   private noiseValues: number[] = [];
 
-  constructor(app: PIXI.Application) {
+  constructor(app: PIXI.Application, roadLayer: PIXI.Container) {
     this.app = app;
     this.container = new PIXI.Container();
     this.gfx = new PIXI.Graphics();
     this.container.addChild(this.gfx);
-    app.stage.addChild(this.container);
+    roadLayer.addChild(this.container);
 
     // Khởi tạo mảng noise ngẫu nhiên
     for (let i = 0; i < 200; i++) {
@@ -147,5 +147,11 @@ export class Road {
     return false;
   }
 
-  resize(w: number, h: number): void {}
+  resize(w: number, h: number): void {
+    // Generate new points and redraw based on new size
+    if (this.lastEnvId) {
+      this.generatePoints(w, this.lastEnvId);
+      this.draw(this.lastEnvId);
+    }
+  }
 }
