@@ -175,12 +175,14 @@ export class PixelEditor {
     // Canvas
     this._bindCanvas(this.bodyCanvas,'body');
     this._bindCanvas(this.wheelCanvas,'wheel');
+    // Single global mouseup listener (avoid duplicate registration per canvas)
+    window.addEventListener('mouseup', this._onMouseUp);
   }
 
   private _bindCanvas(canvas:HTMLCanvasElement,tab:TabMode){
     canvas.addEventListener('mousedown',(e)=>{
       this.painting=true;
-      const cell=this._getCell(e,tab);this.dragStart=cell;
+      this.dragStart=this._getCell(e,tab);
       if(this.tool==='pen'||this.tool==='eraser'||this.tool==='fill')this._handlePaint(e,tab);
     });
     canvas.addEventListener('mousemove',(e)=>{
@@ -188,29 +190,32 @@ export class PixelEditor {
       if(this.tool==='line'||this.tool==='circle'){this._drawPreview(e,tab);}
       else if(this.tool!=='fill')this._handlePaint(e,tab);
     });
-    window.addEventListener('mouseup',(e)=>{
-      if(!this.painting){return;}
-      this.painting=false;
-      if((this.tool==='line'||this.tool==='circle')&&this.dragStart){
-        this._commitShape(e as MouseEvent,tab);
-      }
-      this.dragStart=null;
-      this.previewCtx.clearRect(0,0,BODY_W,BODY_H);
-    });
     canvas.addEventListener('touchstart',(e)=>{e.preventDefault();this.painting=true;const t=e.touches[0] as any;this.dragStart=this._getCell(t,tab);this._handlePaint(t,tab);},{passive:false});
     canvas.addEventListener('touchmove',(e)=>{e.preventDefault();if(!this.painting||this.tool==='fill')return;this._handlePaint(e.touches[0] as any,tab);},{passive:false});
     canvas.addEventListener('touchend',()=>{this.painting=false;this.dragStart=null;});
   }
 
+  // Single global mouseup — registered once in _bindEvents, not per-canvas
+  private _onMouseUp=(e:MouseEvent)=>{
+    if(!this.painting)return;
+    this.painting=false;
+    if((this.tool==='line'||this.tool==='circle')&&this.dragStart){
+      this._commitShape(e, this.mode==='wheel'?'wheel':'body');
+    }
+    this.dragStart=null;
+    this.previewCtx.clearRect(0,0,BODY_W,BODY_H);
+  };
+
   private _getCell(e:{clientX:number;clientY:number},tab:TabMode):{col:number;row:number}{
-    const canvas=tab==='body'?this.bodyCanvas:this.wheelCanvas;
-    const cols=tab==='body'?CUSTOM_GRID_COLS:CUSTOM_WHEEL_COLS;
-    const rows=tab==='body'?CUSTOM_GRID_ROWS:CUSTOM_WHEEL_ROWS;
-    const cW=tab==='body'?BODY_W:WHEEL_W;
-    const cH=tab==='body'?BODY_H:WHEEL_H;
-    const rect=canvas.getBoundingClientRect();
-    const sx=cW/rect.width,sy=cH/rect.height;
-    return {col:Math.floor((e.clientX-rect.left)*sx/(cW/cols)),row:Math.floor((e.clientY-rect.top)*sy/(cH/rows))};
+    // Use getBoundingClientRect for CSS-space position, then map to grid cell.
+    // This works correctly regardless of zoom or devicePixelRatio.
+    const canvas = tab==='body' ? this.bodyCanvas : this.wheelCanvas;
+    const cols   = tab==='body' ? CUSTOM_GRID_COLS  : CUSTOM_WHEEL_COLS;
+    const rows   = tab==='body' ? CUSTOM_GRID_ROWS  : CUSTOM_WHEEL_ROWS;
+    const rect   = canvas.getBoundingClientRect();
+    const col = Math.floor((e.clientX - rect.left) / rect.width  * cols);
+    const row = Math.floor((e.clientY - rect.top)  / rect.height * rows);
+    return { col, row };
   }
 
   private _handlePaint(e:{clientX:number;clientY:number},tab:TabMode){
@@ -287,15 +292,23 @@ export class PixelEditor {
     while(y>=x){x++;if(d>0){y--;d=d+4*(x-y)+10;}else{d=d+4*x+6;}pts();}
   }
 
-  // ── Flood fill ────────────────────────────────────────────
+  // ── Flood fill (O(n) BFS with pointer, not shift()) ────────────
   private _floodFill(g:number[][],sc:number,sr:number,cols:number,rows:number,tgt:number,fill:number){
     if(tgt===fill)return;
-    const q:number[]=[sc,sr];const vis=new Set<number>();
-    while(q.length){
-      const c=q.shift()!,r=q.shift()!,k=r*cols+c;
-      if(vis.has(k)||c<0||c>=cols||r<0||r>=rows||g[r][c]!==tgt)continue;
-      vis.add(k);g[r][c]=fill;
-      q.push(c+1,r,c-1,r,c,r+1,c,r-1);
+    const visited=new Uint8Array(cols*rows); // fast bitset
+    const q=new Int32Array(cols*rows*2);     // pre-allocated pair buffer
+    let head=0,tail=0;
+    q[tail++]=sc; q[tail++]=sr;
+    while(head<tail){
+      const c=q[head++],r=q[head++];
+      if(c<0||c>=cols||r<0||r>=rows)continue;
+      const k=r*cols+c;
+      if(visited[k]||g[r][c]!==tgt)continue;
+      visited[k]=1; g[r][c]=fill;
+      q[tail++]=c+1;q[tail++]=r;
+      q[tail++]=c-1;q[tail++]=r;
+      q[tail++]=c;  q[tail++]=r+1;
+      q[tail++]=c;  q[tail++]=r-1;
     }
   }
 
@@ -404,11 +417,12 @@ export class PixelEditor {
     for(let r=0;r<rows;r++){
       for(let c=0;c<cols;c++){
         const v=grid[r]?.[c]??0;
-        ctx.fillStyle=v===0?((c+r)%2===0?'#1c1e2e':'#222436'):numToCSS(v);
+        // Light gray-white checkerboard for empty cells (easy to see both dark and light colors)
+        ctx.fillStyle=v===0?((c+r)%2===0?'#c8c8c8':'#d8d8d8'):numToCSS(v);
         ctx.fillRect(c*cell,r*cell,cell,cell);
       }
     }
-    ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=0.5;
+    ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=0.5;
     for(let c=0;c<=cols;c++){ctx.beginPath();ctx.moveTo(c*cell,0);ctx.lineTo(c*cell,cH);ctx.stroke();}
     for(let r=0;r<=rows;r++){ctx.beginPath();ctx.moveTo(0,r*cell);ctx.lineTo(cW,r*cell);ctx.stroke();}
   }
