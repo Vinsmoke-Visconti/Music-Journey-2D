@@ -505,12 +505,13 @@
       border-radius: var(--radius);
       box-shadow: 0 24px 64px rgba(0,0,0,.7);
       padding: 20px 24px;
-      width: min(720px, 96vw);
+      width: min(900px, 98vw);
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      max-height: 96vh;
+      gap: 14px;
+      max-height: 97vh;
       overflow-y: auto;
+      position: relative;
     }
     .pe-header {
       display: flex;
@@ -563,17 +564,34 @@
     }
     .pe-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
 
-    /* Canvas wrapper */
+    /* Canvas wrapper — scrollable, fixed height, white border+shadow */
     .pe-canvas-wrap {
       position: relative;
-      border: 2px solid var(--border);
-      border-radius: var(--radius-sm);
-      overflow: hidden;
+      overflow: auto;
+      max-height: 340px;
       cursor: crosshair;
-      background: repeating-conic-gradient(#1c1e2e 0% 25%, #222436 0% 50%) 0 0 / 16px 16px;
+      border: 1.5px solid rgba(255,255,255,0.22);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 6px 24px rgba(0,0,0,.55);
+      background: repeating-conic-gradient(#1c1e2e 0% 25%,#222436 0% 50%) 0 0/16px 16px;
       line-height: 0;
     }
-    #pe-canvas { display: block; image-rendering: pixelated; }
+    /* inner sizing set by JS zoom */
+    .pe-canvas-inner {
+      position: relative;
+      display: inline-block;
+      transform-origin: top left;
+    }
+    .pe-canvas-inner canvas {
+      display: block;
+      image-rendering: pixelated;
+    }
+    #pe-preview-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      pointer-events: none;
+      opacity: .65;
+    }
 
     /* Palette */
     .pe-palette-label {
@@ -583,10 +601,11 @@
       letter-spacing: 1px;
       margin-bottom: 6px;
     }
+    /* Palette grid */
     .pe-palette {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
+      display: grid;
+      grid-template-columns: repeat(17, 28px); /* 1 eraser + 16 per row = 17 */
+      gap: 4px;
     }
     .pe-swatch {
       width: 28px; height: 28px;
@@ -627,6 +646,60 @@
       color: #000; border-color: transparent;
     }
     .pe-btn-apply:hover { opacity: .88; transform: translateY(-1px); }
+
+    /* Color picker row */
+    .pe-color-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .pe-color-preview {
+      width: 32px; height: 32px;
+      border-radius: 6px;
+      border: 2px solid rgba(255,255,255,.3);
+      flex-shrink: 0;
+    }
+    .pe-hex-input {
+      width: 92px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'Outfit', monospace;
+      font-size: .82rem;
+      padding: 4px 8px;
+      outline: none;
+    }
+    .pe-hex-input:focus { border-color: var(--accent); }
+    .pe-opacity-wrap {
+      display: flex; align-items: center; gap: 6px; margin-left: auto;
+    }
+    .pe-opacity-label { font-size: .72rem; color: var(--muted); }
+    #pe-opacity-slider { width: 90px; cursor: pointer; }
+    #pe-opacity-val { font-size: .78rem; color: var(--text); min-width: 36px; text-align:right; }
+
+    /* Zoom row */
+    .pe-zoom-row {
+      display: flex; align-items: center; gap: 6px; margin-left: auto;
+    }
+    .pe-zoom-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-size: .9rem; width: 26px; height: 26px;
+      border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .pe-zoom-btn:hover { background: rgba(255,255,255,.12); }
+    #pe-zoom-val { font-size: .75rem; color: var(--muted); min-width: 36px; text-align:center; }
+
+    /* Saved wrap (tab panel) */
+    #pe-saved-wrap {
+      border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
 
     .pe-btn-draft {
       background: var(--surface2);
@@ -874,45 +947,70 @@
         <button id="pe-close-btn" title="Đóng">✕</button>
       </div>
 
-      <!-- Vehicle Name -->
+      <!-- Name + Tabs -->
       <div class="pe-name-row">
         <label class="pe-palette-label" for="pe-vehicle-name">Tên xe</label>
-        <input type="text" id="pe-vehicle-name" class="pe-name-input"
-               placeholder="VD: Xe Lửa Đỏ..." maxlength="30" />
+        <input type="text" id="pe-vehicle-name" class="pe-name-input" placeholder="VD: Xe Rồng Đỏ..." maxlength="30" />
       </div>
-
-      <!-- Tabs -->
       <div class="pe-tabs">
-        <button class="pe-tab-btn active" id="pe-tab-body">🚐 Thân xe (32×16)</button>
-        <button class="pe-tab-btn"        id="pe-tab-wheel">🔵 Bánh xe (12×12)</button>
+        <button class="pe-tab-btn active" id="pe-tab-body">🚐 Thân xe (64×32)</button>
+        <button class="pe-tab-btn"        id="pe-tab-wheel">🔵 Bánh xe (24×24)</button>
+        <button class="pe-tab-btn"        id="pe-tab-saved">🗂 Mẫu đã lưu</button>
       </div>
 
       <!-- Toolbar -->
       <div class="pe-toolbar">
-        <button class="pe-tool-btn active" id="pe-tool-pen"    title="Bút vẽ (P)">✏️ Bút</button>
+        <button class="pe-tool-btn active" id="pe-tool-pen"    title="Bút (P)">✏️ Bút</button>
         <button class="pe-tool-btn"        id="pe-tool-eraser" title="Tẩy (E)">🧹 Tẩy</button>
         <button class="pe-tool-btn"        id="pe-tool-fill"   title="Đổ màu (F)">🪣 Đổ màu</button>
+        <button class="pe-tool-btn"        id="pe-tool-line"   title="Đường thẳng (L)">╱ Đường</button>
+        <button class="pe-tool-btn"        id="pe-tool-circle" title="Vẽ tròn (C)">○ Tròn</button>
         <div class="pe-sep"></div>
         <button class="pe-tool-btn"        id="pe-tool-undo"   title="Hoàn tác (Ctrl+Z)">↩️ Hoàn tác</button>
+        <div class="pe-zoom-row">
+          <button class="pe-zoom-btn" id="pe-zoom-out" title="Thu nhỏ">−</button>
+          <span id="pe-zoom-val">100%</span>
+          <button class="pe-zoom-btn" id="pe-zoom-in"  title="Phóng to">+</button>
+        </div>
       </div>
 
       <!-- Body canvas -->
       <div class="pe-canvas-wrap" id="pe-body-wrap">
-        <canvas id="pe-body-canvas"></canvas>
+        <div class="pe-canvas-inner" id="pe-body-inner">
+          <canvas id="pe-body-canvas"></canvas>
+          <canvas id="pe-preview-canvas"></canvas>
+        </div>
       </div>
 
       <!-- Wheel canvas -->
       <div class="pe-canvas-wrap" id="pe-wheel-wrap" style="display:none">
-        <canvas id="pe-wheel-canvas"></canvas>
+        <div class="pe-canvas-inner" id="pe-wheel-inner">
+          <canvas id="pe-wheel-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Saved vehicles tab panel -->
+      <div id="pe-saved-wrap" style="display:none">
+        <div id="pe-saved-list"></div>
       </div>
 
       <!-- Palette -->
       <div>
-        <div class="pe-palette-label">Bảng màu</div>
+        <div class="pe-palette-label">Bảng màu (32 màu)</div>
         <div class="pe-palette" id="pe-palette"></div>
+        <!-- Color picker row -->
+        <div class="pe-color-row">
+          <div class="pe-color-preview" id="pe-color-preview"></div>
+          <input type="text" id="pe-hex-input" class="pe-hex-input" placeholder="#1a1a2e" maxlength="7" />
+          <div class="pe-opacity-wrap">
+            <span class="pe-opacity-label">Độ trong suốt</span>
+            <input type="range" id="pe-opacity-slider" min="0" max="255" value="255" />
+            <span id="pe-opacity-val">100%</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Action buttons -->
+      <!-- Actions -->
       <div class="pe-actions">
         <button class="pe-btn pe-btn-reset"   id="pe-reset-btn">↺ Xóa tab hiện tại</button>
         <button class="pe-btn pe-btn-default" id="pe-default-btn">🚐 Mặc định</button>
@@ -920,15 +1018,7 @@
         <button class="pe-btn pe-btn-apply"   id="pe-apply-btn">💾 Lưu & Áp dụng</button>
       </div>
 
-      <!-- Saved vehicles list -->
-      <div class="pe-saved-section">
-        <div class="pe-palette-label">🗂 Mẫu xe đã lưu</div>
-        <div id="pe-saved-list"></div>
-      </div>
-
-      <!-- In-editor toast -->
       <div id="pe-toast"></div>
-
     </div>
   </div>
 

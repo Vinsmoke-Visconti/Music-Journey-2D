@@ -1,53 +1,31 @@
-// ============================================================
-// CustomVehicleStrategy.ts - Pixel-art driven vehicle renderer
-// Supports separate body grid and wheel grid.
-// Music Journey 2D | Option 4: Vehicle Customization
-// ============================================================
-
 import * as PIXI from 'pixi.js';
 import { VehicleStrategy, VehicleDimensions } from '../VehicleStrategy';
 
-// Grid dimensions (columns × rows)
-export const CUSTOM_GRID_COLS      = 32;
-export const CUSTOM_GRID_ROWS      = 16;
-export const CUSTOM_WHEEL_COLS     = 12;
-export const CUSTOM_WHEEL_ROWS     = 12;
+export const CUSTOM_GRID_COLS  = 64;
+export const CUSTOM_GRID_ROWS  = 32;
+export const CUSTOM_WHEEL_COLS = 24;
+export const CUSTOM_WHEEL_ROWS = 24;
 
-// Display pixel size
-const BODY_PIXEL  = 6.5;
-const WHEEL_PIXEL = 3.0;
+const BODY_PX  = 3.3;
+const WHEEL_PX = 1.5;
 
-const W  = CUSTOM_GRID_COLS  * BODY_PIXEL;  // ~208px
-const H  = CUSTOM_GRID_ROWS  * BODY_PIXEL;  // ~104px
-const WR = (CUSTOM_WHEEL_COLS * WHEEL_PIXEL) / 2; // radius ≈ 18px
+const W  = CUSTOM_GRID_COLS  * BODY_PX;   // 211.2
+const H  = CUSTOM_GRID_ROWS  * BODY_PX;   // 105.6
+const WR = (CUSTOM_WHEEL_COLS * WHEEL_PX) / 2; // 18
 
-// ── Default blank grids ───────────────────────────────────────
 export function makeBlankGrid(): number[][] {
-  return Array.from({ length: CUSTOM_GRID_ROWS }, () =>
-    new Array(CUSTOM_GRID_COLS).fill(0)
-  );
+  return Array.from({ length: CUSTOM_GRID_ROWS }, () => new Array(CUSTOM_GRID_COLS).fill(0));
 }
-
 export function makeBlankWheelGrid(): number[][] {
-  return Array.from({ length: CUSTOM_WHEEL_ROWS }, () =>
-    new Array(CUSTOM_WHEEL_COLS).fill(0)
-  );
+  return Array.from({ length: CUSTOM_WHEEL_ROWS }, () => new Array(CUSTOM_WHEEL_COLS).fill(0));
 }
 
-// ── Default body: cute retro van silhouette ───────────────────
+/** Scale-up the old 32×16 default body to 64×32 by doubling each pixel */
 export function makeDefaultBodyGrid(): number[][] {
-  const _ = 0;
-  const B  = 0x1a1a2e;
-  const C  = 0x533483;
-  const W2 = 0xf8f9fa;
-  const Y  = 0xf9c74f;
-  const R  = 0xe94560;
-  const G  = 0x6c757d;
-  const T  = 0x343a40;
-
+  const _ = 0, B = 0x1a1a2e, C = 0x533483, W2 = 0xf8f9fa,
+        Y = 0xf9c74f, R = 0xe94560, G = 0x6c757d, T = 0x343a40;
   // prettier-ignore
-  return [
-    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+  const small: number[][] = [
     [_,_,_,_,_,R,R,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,Y,Y,_,_],
     [_,_,_,_,R,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,Y,_],
     [_,_,_,R,B,B,C,C,C,C,C,B,B,B,B,B,W2,W2,W2,W2,W2,B,B,B,B,B,B,B,B,B,Y,_],
@@ -63,38 +41,68 @@ export function makeDefaultBodyGrid(): number[][] {
     [_,_,_,T,T,T,T,T,T,_,_,_,_,_,_,_,_,_,_,_,_,_,_,T,T,T,T,T,T,_,_,_],
     [_,_,_,_,T,T,T,T,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,T,T,T,T,_,_,_,_],
     [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_],
   ];
+  // Scale 2× by doubling each cell
+  const big: number[][] = [];
+  for (const row of small) {
+    const r1: number[] = [], r2: number[] = [];
+    for (const v of row) { r1.push(v, v); r2.push(v, v); }
+    big.push(r1, r2);
+  }
+  return big;
 }
 
-// ── Default wheel: simple pixel circle ───────────────────────
 export function makeDefaultWheelGrid(): number[][] {
-  const _ = 0;
-  const T = 0x1a1a2e;   // tyre dark
-  const H = 0x533483;   // hub purple
-  const S = 0x8a63d2;   // spoke
-  const C2 = 0x0d0f1a;  // center
-
-  // prettier-ignore
+  const _ = 0, T = 0x1a1a2e, H2 = 0x533483, S = 0x8a63d2, C2 = 0x0d0f1a, W2 = 0xadb5bd;
+  // prettier-ignore  (24×24 circle wheel)
   return [
-    [_,_,_,T,T,T,T,T,T,_,_,_],
-    [_,_,T,T,T,T,T,T,T,T,_,_],
-    [_,T,T,T,H,H,H,H,T,T,T,_],
-    [T,T,T,H,H,S,H,H,H,T,T,T],
-    [T,T,H,H,S,H,S,H,H,H,T,T],
-    [T,T,H,S,H,C2,H,S,H,H,T,T],
-    [T,T,H,H,S,H,S,H,H,H,T,T],
-    [T,T,T,H,H,S,H,H,H,T,T,T],
-    [_,T,T,T,H,H,H,H,T,T,T,_],
-    [_,_,T,T,T,T,T,T,T,T,_,_],
-    [_,_,_,T,T,T,T,T,T,_,_,_],
-    [_,_,_,_,_,_,_,_,_,_,_,_],
+    [_,_,_,_,_,_,T,T,T,T,T,T,T,T,T,T,T,T,_,_,_,_,_,_],
+    [_,_,_,_,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,_,_,_,_],
+    [_,_,_,T,T,T,T,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,T,T,T,T,_,_,_],
+    [_,_,T,T,T,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,T,T,T,_,_],
+    [_,_,T,T,H2,H2,S,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,S,H2,H2,T,T,_,_],
+    [_,T,T,H2,H2,S,S,S,H2,H2,H2,H2,H2,H2,H2,H2,S,S,S,H2,H2,T,T,_],
+    [T,T,T,H2,H2,S,S,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,S,S,H2,H2,T,T,T],
+    [T,T,H2,H2,H2,S,H2,H2,H2,S,S,S,S,S,S,H2,H2,H2,S,H2,H2,H2,T,T],
+    [T,T,H2,H2,H2,H2,H2,H2,S,S,C2,C2,C2,C2,S,S,H2,H2,H2,H2,H2,H2,T,T],
+    [T,T,H2,H2,H2,H2,H2,S,S,C2,W2,W2,W2,W2,C2,S,S,H2,H2,H2,H2,H2,T,T],
+    [T,T,H2,H2,H2,H2,H2,S,C2,W2,W2,W2,W2,W2,W2,C2,S,H2,H2,H2,H2,H2,T,T],
+    [T,T,H2,H2,H2,H2,H2,S,C2,W2,W2,C2,C2,W2,W2,C2,S,H2,H2,H2,H2,H2,T,T],
+    [T,T,H2,H2,H2,H2,H2,S,C2,W2,W2,C2,C2,W2,W2,C2,S,H2,H2,H2,H2,H2,T,T],
+    [T,T,H2,H2,H2,H2,H2,S,C2,W2,W2,W2,W2,W2,W2,C2,S,H2,H2,H2,H2,H2,T,T],
+    [T,T,H2,H2,H2,H2,H2,S,S,C2,W2,W2,W2,W2,C2,S,S,H2,H2,H2,H2,H2,T,T],
+    [T,T,H2,H2,H2,H2,H2,H2,S,S,C2,C2,C2,C2,S,S,H2,H2,H2,H2,H2,H2,T,T],
+    [T,T,H2,H2,H2,S,H2,H2,H2,S,S,S,S,S,S,H2,H2,H2,S,H2,H2,H2,T,T],
+    [T,T,T,H2,H2,S,S,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,S,S,H2,H2,T,T,T],
+    [_,T,T,H2,H2,S,S,S,H2,H2,H2,H2,H2,H2,H2,H2,S,S,S,H2,H2,T,T,_],
+    [_,_,T,T,H2,H2,S,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,S,H2,H2,T,T,_,_],
+    [_,_,T,T,T,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,T,T,T,_,_],
+    [_,_,_,T,T,T,T,H2,H2,H2,H2,H2,H2,H2,H2,H2,H2,T,T,T,T,_,_,_],
+    [_,_,_,_,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,_,_,_,_],
+    [_,_,_,_,_,_,T,T,T,T,T,T,T,T,T,T,T,T,_,_,_,_,_,_],
   ];
 }
 
-// ── Strategy ─────────────────────────────────────────────────
+/** Color rendering: supports both legacy 24-bit RGB and new 32-bit ARGB */
+export function colorToCSS(value: number): string | null {
+  if (value === 0) return null;
+  if (value > 0xFFFFFF) {
+    const a = ((value >>> 24) & 0xFF) / 255;
+    const r = (value >>> 16) & 0xFF;
+    const g = (value >>> 8) & 0xFF;
+    const b = value & 0xFF;
+    return `rgba(${r},${g},${b},${a.toFixed(3)})`;
+  }
+  const r = (value >>> 16) & 0xFF;
+  const g = (value >>> 8) & 0xFF;
+  const b = value & 0xFF;
+  return `rgb(${r},${g},${b})`;
+}
+
 export class CustomVehicleStrategy implements VehicleStrategy {
   id = 'custom';
-  private bodyGrid: number[][];
+  private bodyGrid:  number[][];
   private wheelGrid: number[][];
 
   constructor(bodyGrid?: number[][], wheelGrid?: number[][]) {
@@ -109,61 +117,43 @@ export class CustomVehicleStrategy implements VehicleStrategy {
 
   getDimensions(): VehicleDimensions {
     return {
-      W,
-      H,
-      WR,
-      wFrontX:  W / 2 - 52,
-      wRearX:  -W / 2 + 52,
+      W, H, WR,
+      wFrontX:  73,   // ~matches van proportions for W≈211
+      wRearX:  -73,
     };
   }
 
   drawBody(container: PIXI.Container): void {
     const g = new PIXI.Graphics();
     container.addChild(g);
-
-    const offsetX = -W / 2;
-    const offsetY = -H;
-
+    const ox = -W / 2, oy = -H;
     for (let row = 0; row < CUSTOM_GRID_ROWS; row++) {
       for (let col = 0; col < CUSTOM_GRID_COLS; col++) {
-        const color = this.bodyGrid[row]?.[col] ?? 0;
-        if (color === 0) continue;
-        g.beginFill(color, 1);
-        g.drawRect(
-          offsetX + col * BODY_PIXEL,
-          offsetY + row * BODY_PIXEL,
-          BODY_PIXEL,
-          BODY_PIXEL
-        );
+        const cv = this.bodyGrid[row]?.[col] ?? 0;
+        if (cv === 0) continue;
+        const css = colorToCSS(cv);
+        if (!css) continue;
+        const alpha = cv > 0xFFFFFF ? ((cv >>> 24) & 0xFF) / 255 : 1;
+        g.beginFill(cv & 0xFFFFFF, alpha);
+        g.drawRect(ox + col * BODY_PX, oy + row * BODY_PX, BODY_PX, BODY_PX);
         g.endFill();
       }
     }
   }
 
-  drawWheels(
-    frontContainer: PIXI.Container,
-    rearContainer: PIXI.Container,
-    _WR: number
-  ): void {
+  drawWheels(frontContainer: PIXI.Container, rearContainer: PIXI.Container, _WR: number): void {
     [frontContainer, rearContainer].forEach(cont => {
       const g = new PIXI.Graphics();
       cont.addChild(g);
-
-      // Center the wheel grid
-      const offX = -(CUSTOM_WHEEL_COLS * WHEEL_PIXEL) / 2;
-      const offY = -(CUSTOM_WHEEL_ROWS * WHEEL_PIXEL) / 2;
-
+      const ox = -(CUSTOM_WHEEL_COLS * WHEEL_PX) / 2;
+      const oy = -(CUSTOM_WHEEL_ROWS * WHEEL_PX) / 2;
       for (let row = 0; row < CUSTOM_WHEEL_ROWS; row++) {
         for (let col = 0; col < CUSTOM_WHEEL_COLS; col++) {
-          const color = this.wheelGrid[row]?.[col] ?? 0;
-          if (color === 0) continue;
-          g.beginFill(color, 1);
-          g.drawRect(
-            offX + col * WHEEL_PIXEL,
-            offY + row * WHEEL_PIXEL,
-            WHEEL_PIXEL,
-            WHEEL_PIXEL
-          );
+          const cv = this.wheelGrid[row]?.[col] ?? 0;
+          if (cv === 0) continue;
+          const alpha = cv > 0xFFFFFF ? ((cv >>> 24) & 0xFF) / 255 : 1;
+          g.beginFill(cv & 0xFFFFFF, alpha);
+          g.drawRect(ox + col * WHEEL_PX, oy + row * WHEEL_PX, WHEEL_PX, WHEEL_PX);
           g.endFill();
         }
       }
