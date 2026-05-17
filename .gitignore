@@ -7,3 +7,6 @@ dist/
 # Music
 public/assets/audio/
 src/assets/audio/
+
+# Secrets
+supabase_pass.tx
