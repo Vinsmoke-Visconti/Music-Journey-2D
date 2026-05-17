@@ -187,23 +187,25 @@ function renderPlaylist(): void {
     item.className = 'pl-item' + (i === trackIndex ? ' active' : '');
     item.setAttribute('data-idx', i.toString());
 
-    // Marquee wrapper — CSS handles scrolling if text overflows
+    // Doubled-content ticker for seamless continuous loop
+    // translateX(-50%) = exactly one copy width → perfect loop
+    const sep = '<span class="pl-t-sep"> ◆ </span>';
     item.innerHTML = `
       <span class="pl-num">${i + 1}</span>
       <span class="pl-name-wrap">
-        <span class="pl-name">${track.name}</span>
+        <span class="pl-ticker">
+          <span class="pl-t">${track.name}</span>${sep}<span class="pl-t">${track.name}</span>${sep}
+        </span>
       </span>
       ${track.isCustom ? `<span class="pl-badge-custom">📲</span>
         <button class="pl-del-btn" title="Xóa bài này" data-del="${i}">✕</button>` : ''}
     `;
 
-    // Play on row click (but not on the delete button)
     item.onclick = (e) => {
       if ((e.target as HTMLElement).classList.contains('pl-del-btn')) return;
       loadTrack(i); forcePlayAudio();
     };
 
-    // Delete local track
     const delBtn = item.querySelector('.pl-del-btn') as HTMLButtonElement | null;
     if (delBtn) {
       delBtn.onclick = async (e) => {
@@ -221,6 +223,7 @@ function renderPlaylist(): void {
     container.appendChild(item);
   });
 }
+
 
 
 // Expose globally so playlist panel clicks work
