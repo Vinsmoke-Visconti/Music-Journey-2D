@@ -207,11 +207,11 @@ export class PixelEditor {
   };
 
   private _getCell(e:{clientX:number;clientY:number},tab:TabMode):{col:number;row:number}{
-    // Use getBoundingClientRect for CSS-space position, then map to grid cell.
-    // This works correctly regardless of zoom or devicePixelRatio.
     const canvas = tab==='body' ? this.bodyCanvas : this.wheelCanvas;
-    const cols   = tab==='body' ? CUSTOM_GRID_COLS  : CUSTOM_WHEEL_COLS;
-    const rows   = tab==='body' ? CUSTOM_GRID_ROWS  : CUSTOM_WHEEL_ROWS;
+    // Derive cols/rows from the ACTUAL grid array to avoid any import caching mismatch
+    const grid   = tab==='body' ? this.bodyGrid   : this.wheelGrid;
+    const rows   = grid.length;
+    const cols   = grid[0]?.length ?? 1;
     const rect   = canvas.getBoundingClientRect();
     const col = Math.floor((e.clientX - rect.left) / rect.width  * cols);
     const row = Math.floor((e.clientY - rect.top)  / rect.height * rows);
@@ -219,10 +219,11 @@ export class PixelEditor {
   }
 
   private _handlePaint(e:{clientX:number;clientY:number},tab:TabMode){
-    const {col,row}=this._getCell(e,tab);
-    const cols=tab==='body'?CUSTOM_GRID_COLS:CUSTOM_WHEEL_COLS;
-    const rows=tab==='body'?CUSTOM_GRID_ROWS:CUSTOM_WHEEL_ROWS;
     const grid=tab==='body'?this.bodyGrid:this.wheelGrid;
+    const {col,row}=this._getCell(e,tab);
+    // Use ACTUAL grid dimensions to ensure full grid is accessible
+    const rows = grid.length;
+    const cols = grid[0]?.length ?? 0;
     if(col<0||col>=cols||row<0||row>=rows)return;
     if(this.tool==='fill'){
       this._pushHistory(tab);

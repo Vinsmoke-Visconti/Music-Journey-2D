@@ -451,7 +451,41 @@
       color: var(--accent);
       font-weight: 600;
     }
-    .pl-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Playlist name — marquee for overflow */
+    .pl-name-wrap {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .pl-name {
+      display: inline-block;
+      white-space: nowrap;
+      /* animation added via JS class when text wider than container */
+    }
+    .pl-name.marquee {
+      animation: pl-marquee 9s linear infinite;
+    }
+    @keyframes pl-marquee {
+      0%   { transform: translateX(0%); }
+      10%  { transform: translateX(0%); }   /* pause at start */
+      85%  { transform: translateX(calc(-100% + 160px)); } /* scroll left */
+      100% { transform: translateX(0%); }  /* snap back */
+    }
+    .pl-del-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: .7rem;
+      cursor: pointer;
+      padding: 2px 5px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity var(--transition), color var(--transition), background var(--transition);
+    }
+    .pl-item:hover .pl-del-btn { opacity: 1; }
+    .pl-del-btn:hover { color: var(--red); background: rgba(239,68,68,.15); }
     .pl-num { color: var(--muted); font-size: .72rem; width: 16px; text-align: center; flex-shrink: 0; }
 
     /* ─────────────── LOCK TOAST ─────────────── */
@@ -1105,6 +1139,26 @@
         window.__openPixelEditor();
       }, 0);
     }
+  });
+  // Activate marquee on pl-name elements that overflow their container
+  function activateMarquees() {
+    document.querySelectorAll('.pl-name').forEach(el => {
+      const wrap = el.parentElement;
+      if (!wrap) return;
+      if (el.scrollWidth > wrap.clientWidth + 4) {
+        el.classList.add('marquee');
+      } else {
+        el.classList.remove('marquee');
+      }
+    });
+  }
+  // Run after any DOM change in playlist panel
+  const plObserver = new MutationObserver(activateMarquees);
+  const plPanel = document.getElementById('playlist-panel');
+  if (plPanel) plObserver.observe(plPanel, { childList: true, subtree: true });
+  // Also run on open
+  document.getElementById('playlist-btn').addEventListener('click', () => {
+    setTimeout(activateMarquees, 50);
   });
 </script>
 

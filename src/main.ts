@@ -104,14 +104,65 @@ interface TrackEntry {
 
 let PLAYLIST: TrackEntry[] = [
   { name: '🎵 Viper Beat (Original)', src: 'https://raw.githubusercontent.com/mdn/webaudio-examples/main/audio-analyser/viper.mp3' },
-  { name: '🐉 Lạc Trôi - Sơn Tùng M-TP', src: './assets/audio/Lạc Trôi_Sơn Tùng M-TP_-1075806563.mp3' },
-  { name: '🎹 Giorno\'s Theme - JJBA', src: './assets/audio/JoJos Bizarre AdventureGolden Wind OST _Giornos Theme_ Il vento doro (Main Theme).mp3' },
-  { name: '🎵 comethru - Jeremy Zucker', src: './assets/audio/jeremy_zucker_comethru_288405.mp3' },
-  { name: '🌸 Nandemonaiya - Kimi no Na wa', src: './assets/audio/kimi_no_na_wa_nandemonaiya_kamishiraishi_mone_maxone_remix_198134.mp3' },
-  { name: '👹 Guren no Yumiya - AoT', src: './assets/audio/linked_horizon_guren_no_yumiya_attack_on_titan_full_opening_theme_783946.mp3' },
-  { name: '☀️ Summer Breeze (Bensound)', src: 'https://archive.org/download/bensound-summer/bensound-summer.mp3' },
 ];
 let trackIndex = 0;
+
+// ─── IndexedDB helpers for local audio persistence ──────────────
+const IDB_NAME = 'mj2d_audio_v1';
+const IDB_STORE = 'tracks';
+function openAudioDB(): Promise<IDBDatabase> {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(IDB_STORE))
+        req.result.createObjectStore(IDB_STORE, { keyPath: 'id' });
+    };
+    req.onsuccess = () => res(req.result);
+    req.onerror  = () => rej(req.error);
+  });
+}
+async function saveTrackIDB(id: string, name: string, buf: ArrayBuffer): Promise<void> {
+  const db = await openAudioDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put({ id, name, data: buf });
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  });
+}
+async function loadAllTracksIDB(): Promise<{id:string; name:string; blob:Blob}[]> {
+  const db = await openAudioDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).getAll();
+    req.onsuccess = () => res((req.result as any[]).map(r => ({
+      id: r.id, name: r.name,
+      blob: new Blob([r.data], { type: 'audio/mpeg' })
+    })));
+    req.onerror = () => rej(req.error);
+  });
+}
+async function deleteTrackIDB(id: string): Promise<void> {
+  const db = await openAudioDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete = () => res();
+    tx.onerror    = () => rej(tx.error);
+  });
+}
+
+// Restore persisted local tracks on startup
+(async () => {
+  try {
+    const saved = await loadAllTracksIDB();
+    saved.forEach(t => {
+      const objectUrl = URL.createObjectURL(t.blob);
+      PLAYLIST.push({ name: t.name, src: objectUrl, isCustom: true, objectUrl, id: t.id } as any);
+    });
+    renderPlaylist();
+  } catch(e) { console.warn('[IDB] Could not load saved tracks:', e); }
+})();
 
 function loadTrack(idx: number): void {
   trackIndex = (idx + PLAYLIST.length) % PLAYLIST.length;
@@ -135,18 +186,42 @@ function renderPlaylist(): void {
     const item = document.createElement('div');
     item.className = 'pl-item' + (i === trackIndex ? ' active' : '');
     item.setAttribute('data-idx', i.toString());
+
+    // Marquee wrapper — CSS handles scrolling if text overflows
     item.innerHTML = `
       <span class="pl-num">${i + 1}</span>
-      <span class="pl-name">${track.name}</span>
-      ${track.isCustom ? '<span class="pl-badge-custom">📲 Local</span>' : ''}
+      <span class="pl-name-wrap">
+        <span class="pl-name">${track.name}</span>
+      </span>
+      ${track.isCustom ? `<span class="pl-badge-custom">📲</span>
+        <button class="pl-del-btn" title="Xóa bài này" data-del="${i}">✕</button>` : ''}
     `;
-    item.onclick = () => {
-      loadTrack(i);
-      forcePlayAudio();
+
+    // Play on row click (but not on the delete button)
+    item.onclick = (e) => {
+      if ((e.target as HTMLElement).classList.contains('pl-del-btn')) return;
+      loadTrack(i); forcePlayAudio();
     };
+
+    // Delete local track
+    const delBtn = item.querySelector('.pl-del-btn') as HTMLButtonElement | null;
+    if (delBtn) {
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        const idx = parseInt(delBtn.dataset.del ?? '0');
+        const t = PLAYLIST[idx] as any;
+        if (t?.objectUrl) URL.revokeObjectURL(t.objectUrl);
+        if (t?.id) { try { await deleteTrackIDB(t.id); } catch(_) {} }
+        PLAYLIST.splice(idx, 1);
+        if (trackIndex >= PLAYLIST.length) trackIndex = PLAYLIST.length - 1;
+        renderPlaylist();
+      };
+    }
+
     container.appendChild(item);
   });
 }
+
 
 // Expose globally so playlist panel clicks work
 (window as any).__loadTrack = loadTrack;
@@ -156,37 +231,34 @@ const uploadBtn   = document.getElementById('upload-track-btn') as HTMLButtonEle
 const uploadInput = document.getElementById('custom-track-input') as HTMLInputElement | null;
 
 if (uploadBtn && uploadInput) {
-  // Click the hidden input when button is pressed
   uploadBtn.addEventListener('click', () => uploadInput.click());
 
-  uploadInput.addEventListener('change', () => {
+  uploadInput.addEventListener('change', async () => {
     const files = uploadInput.files;
     if (!files || files.length === 0) return;
-
     const firstNewIdx = PLAYLIST.length;
-    Array.from(files).forEach(file => {
-      // Revoke old URLs to prevent memory leak (if re-uploading same name)
-      const existing = PLAYLIST.find(t => t.isCustom && t.name.includes(file.name));
-      if (existing?.objectUrl) URL.revokeObjectURL(existing.objectUrl);
+
+    for (const file of Array.from(files)) {
+      const existing = PLAYLIST.find((t: any) => t.isCustom && t.id && t.name === `🎶 ${file.name.replace(/\.(mp3|wav|ogg|flac|m4a|aac)$/i, '')}`);
+      if ((existing as any)?.objectUrl) URL.revokeObjectURL((existing as any).objectUrl);
 
       const objectUrl = URL.createObjectURL(file);
-      // Clean up file name
       const displayName = file.name.replace(/\.(mp3|wav|ogg|flac|m4a|aac)$/i, '');
-      PLAYLIST.push({
-        name: `🎶 ${displayName}`,
-        src: objectUrl,
-        isCustom: true,
-        objectUrl
-      });
-    });
+      const id = `local_${Date.now()}_${file.name}`;
+      const entry: any = { id, name: `🎶 ${displayName}`, src: objectUrl, isCustom: true, objectUrl };
+      PLAYLIST.push(entry);
 
-    // Re-render playlist and jump to the first uploaded track
+      // Persist to IndexedDB
+      try {
+        const buf = await file.arrayBuffer();
+        await saveTrackIDB(id, entry.name, buf);
+      } catch(e) { console.warn('[IDB] Save failed:', e); }
+    }
+
     renderPlaylist();
     loadTrack(firstNewIdx);
     forcePlayAudio();
     showToast(`✅ Đã thêm ${files.length} bài nhạc từ máy tính!`);
-
-    // Reset input so the same file can be re-selected if needed
     uploadInput.value = '';
   });
 }
