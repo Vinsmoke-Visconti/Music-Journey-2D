@@ -677,8 +677,47 @@
       display: flex; align-items: center; gap: 6px; margin-left: auto;
     }
     .pe-opacity-label { font-size: .72rem; color: var(--muted); }
-    #pe-opacity-slider { width: 90px; cursor: pointer; }
+    #pe-opacity-slider {
+      -webkit-appearance: none;
+      width: 90px; height: 4px;
+      border-radius: 4px;
+      background: rgba(255,255,255,.15);
+      outline: none;
+      cursor: pointer;
+    }
+    #pe-opacity-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(249,199,79,.5);
+    }
     #pe-opacity-val { font-size: .78rem; color: var(--text); min-width: 36px; text-align:right; }
+
+    /* Custom scrollbars for Pixel Editor containers */
+    .pe-canvas-wrap::-webkit-scrollbar,
+    #pe-saved-wrap::-webkit-scrollbar,
+    #pixel-editor-modal::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .pe-canvas-wrap::-webkit-scrollbar-track,
+    #pe-saved-wrap::-webkit-scrollbar-track,
+    #pixel-editor-modal::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .pe-canvas-wrap::-webkit-scrollbar-thumb,
+    #pe-saved-wrap::-webkit-scrollbar-thumb,
+    #pixel-editor-modal::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 10px;
+    }
+    .pe-canvas-wrap::-webkit-scrollbar-thumb:hover,
+    #pe-saved-wrap::-webkit-scrollbar-thumb:hover,
+    #pixel-editor-modal::-webkit-scrollbar-thumb:hover {
+      background: #fff;
+    }
 
     /* Zoom row */
     .pe-zoom-row {
@@ -1060,7 +1099,12 @@
 
   // Design button → open pixel editor via global bridge from main.ts
   document.getElementById('design-btn').addEventListener('click', () => {
-    if (window.__openPixelEditor) window.__openPixelEditor();
+    if (window.__openPixelEditor) {
+      // Defer execution slightly to let the browser complete painting the button click state (fixes Chrome INP warning)
+      setTimeout(() => {
+        window.__openPixelEditor();
+      }, 0);
+    }
   });
 </script>
 
