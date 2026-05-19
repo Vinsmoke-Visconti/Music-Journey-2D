@@ -21,6 +21,7 @@ export interface MapStrategy {
   
   // Road methods
   getRoadConfig(): { amplitude: number; roadColor: number; lineColor: number };
+  getRoadSlope?(audioData?: { bassEnergy: number; trebleEnergy: number }): number;
   generatePuddles(width: number): { x: number; width: number }[];
   drawRoadDecorations(g: PIXI.Graphics, puddles: { x: number; width: number }[], getGroundYAt: (x: number) => number): void;
 

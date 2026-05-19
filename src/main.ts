@@ -618,7 +618,7 @@ app.ticker.add(() => {
 
   // Parallax: apply environment speedFactor, song progress, and bassEnergy for beat-reactive bounce
   parallax.update(spd * currentEnv.speedFactor, ad.progress, ad.bassEnergy);
-  road.update(spd, app.screen.width, currentEnvId);
+  road.update(spd, app.screen.width, currentEnvId, ad);
 
   // Particles
   if (spd > 0.3) {

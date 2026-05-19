@@ -53,6 +53,10 @@ export abstract class BaseMapStrategy implements MapStrategy {
   }
 
   abstract getRoadConfig(): { amplitude: number; roadColor: number; lineColor: number };
+  
+  getRoadSlope(audioData?: { bassEnergy: number; trebleEnergy: number }): number {
+    return 0; // Default flat slope
+  }
 
   generatePuddles(width: number): { x: number; width: number }[] {
     return [];

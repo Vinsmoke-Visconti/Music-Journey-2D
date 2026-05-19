@@ -12,6 +12,7 @@ export class Road {
   private points: { x: number; y: number }[] = [];
   private app: PIXI.Application;
   private noiseOffset = 0;
+  private currentSlope = 0;
   private puddles: { x: number; width: number }[] = [];
   private lastEnvId: string = '';
 
@@ -51,12 +52,16 @@ export class Road {
     return noise1 * (1 - f2) + noise2 * f2;
   }
 
-  generatePoints(width: number, envId: string): void {
+  generatePoints(width: number, envId: string, audioData?: { bassEnergy: number; trebleEnergy: number }): void {
     this.points = [];
     const count = Math.ceil(width / this.SEGMENT_WIDTH) + 5;
     
     const strategy = getMapStrategy(envId);
     const config = strategy.getRoadConfig();
+
+    const targetSlopeDeg = strategy.getRoadSlope ? strategy.getRoadSlope(audioData) : 0;
+    this.currentSlope += (targetSlopeDeg - this.currentSlope) * 0.05; // Smooth transition
+    const slopeRad = this.currentSlope * Math.PI / 180;
 
     // Tạo vũng nước chỉ khi môi trường thay đổi
     if (envId !== this.lastEnvId) {
@@ -71,15 +76,16 @@ export class Road {
       const n3 = this.getNoise((x + this.noiseOffset) * 0.5) * 2.0;
       
       const noiseY = (n1 + n2 + n3) * config.amplitude;
+      const slopeY = Math.tan(slopeRad) * x;
       
       this.points.push({
         x: x,
-        y: this.app.screen.height - this.GROUND_THICKNESS + noiseY
+        y: this.app.screen.height - this.GROUND_THICKNESS + noiseY + slopeY
       });
     }
   }
 
-  update(speed: number, width: number, envId: string): void {
+  update(speed: number, width: number, envId: string, audioData?: { bassEnergy: number; trebleEnergy: number }): void {
     this.noiseOffset += speed * 5;
 
     // Move puddles backwards to match road movement
@@ -92,7 +98,7 @@ export class Road {
       }
     }
 
-    this.generatePoints(width, envId);
+    this.generatePoints(width, envId, audioData);
     this.draw(envId);
   }
 

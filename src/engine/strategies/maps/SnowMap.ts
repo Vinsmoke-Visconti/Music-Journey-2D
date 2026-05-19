@@ -70,7 +70,17 @@ export class SnowMap extends BaseMapStrategy {
   }
 
   getRoadConfig() {
-    return { amplitude: 6, roadColor: 0x90a4ae, lineColor: 0xcfd8dc };
+    return { amplitude: 3, roadColor: 0x90a4ae, lineColor: 0xcfd8dc };
+  }
+
+  getRoadSlope(audioData?: { bassEnergy: number; trebleEnergy: number }): number {
+    if (!audioData) return 0;
+    // Nhạc trầm (bass mạnh) -> đường đi dốc xuống tối đa 18 độ
+    if (audioData.bassEnergy > 0.6) return 18 * audioData.bassEnergy;
+    // Nhạc bổng hoặc bình thường (treble cao hoặc cường độ chung trung bình, ko bass) -> dốc lên tối đa 18 độ
+    if (audioData.bassEnergy < 0.3 && audioData.trebleEnergy > 0.3) return -18 * audioData.trebleEnergy;
+    // Nhạc nhẹ -> bằng phẳng
+    return 0;
   }
 
   getDustColor() {
