@@ -502,6 +502,24 @@ async function initAuth() {
     updateSelectUI();
   }
   _updateAuthUI();
+
+  // Listen to auth events (especially for Forgot Password / Recovery)
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      authUI.showChangePassword();
+    } else {
+      currentUser = session?.user || null;
+      if (currentUser) {
+        const inv = await getUserInventory(currentUser.id);
+        userInventory = inv.map(item => item.item_id);
+        updateSelectUI();
+      } else {
+        userInventory = [];
+        updateSelectUI();
+      }
+      _updateAuthUI();
+    }
+  });
 }
 
 function _updateAuthUI() {
