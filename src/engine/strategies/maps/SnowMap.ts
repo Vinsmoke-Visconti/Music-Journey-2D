@@ -6,6 +6,13 @@ import { ParticleType } from '../../Particles';
 export class SnowMap extends BaseMapStrategy {
   id = 'snow';
 
+  private startTime = Date.now();
+  private eventTime = Math.random() * 180 * 1000;
+  private eventTriggered = false;
+  private isEventActive = false;
+  private eventDuration = 10000 + Math.random() * 15000; // dốc kéo dài từ 10s đến 25s
+  private currentSlopeTarget = 0;
+
   buildLayers(W: number, H: number, groundY: number): ColorLayer[] {
     const layers: ColorLayer[] = [];
 
@@ -74,13 +81,35 @@ export class SnowMap extends BaseMapStrategy {
   }
 
   getRoadSlope(audioData?: { bassEnergy: number; trebleEnergy: number }): number {
-    if (!audioData) return 0;
-    // Nhạc trầm (bass mạnh) -> đường đi dốc xuống tối đa 18 độ
-    if (audioData.bassEnergy > 0.6) return 18 * audioData.bassEnergy;
-    // Nhạc bổng hoặc bình thường (treble cao hoặc cường độ chung trung bình, ko bass) -> dốc lên tối đa 18 độ
-    if (audioData.bassEnergy < 0.3 && audioData.trebleEnergy > 0.3) return -18 * audioData.trebleEnergy;
-    // Nhạc nhẹ -> bằng phẳng
-    return 0;
+    const elapsed = Date.now() - this.startTime;
+
+    // Reset chu kỳ mỗi 3 phút (180s)
+    if (elapsed > 180 * 1000) {
+      this.startTime = Date.now();
+      this.eventTime = Math.random() * 180 * 1000;
+      this.eventTriggered = false;
+      this.isEventActive = false;
+      this.eventDuration = 10000 + Math.random() * 15000;
+      this.currentSlopeTarget = 0;
+    }
+
+    // Khi tới thời điểm kích hoạt ngẫu nhiên
+    if (!this.eventTriggered && elapsed >= this.eventTime) {
+      this.eventTriggered = true;
+      if (Math.random() < 0.25) { // 25% cơ hội dốc cao lên
+        this.isEventActive = true;
+        // Dốc lên từ 5 đến 10 độ (dốc lên là góc âm trong hệ trục Y hướng xuống)
+        this.currentSlopeTarget = -(5 + Math.random() * 5); 
+      }
+    }
+
+    // Kết thúc thời gian dốc
+    if (this.isEventActive && elapsed >= this.eventTime + this.eventDuration) {
+      this.isEventActive = false;
+      this.currentSlopeTarget = 0;
+    }
+
+    return this.currentSlopeTarget;
   }
 
   getDustColor() {
