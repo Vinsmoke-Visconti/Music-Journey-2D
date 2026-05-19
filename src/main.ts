@@ -492,19 +492,11 @@ audioEl.addEventListener('play',  () => albumArt?.classList.add('playing'));
 audioEl.addEventListener('pause', () => albumArt?.classList.remove('playing'));
 
 // --- Phase 4: Init Auth ---
-async function initAuth() {
-  const { data: { session } } = await supabase.auth.getSession();
-  currentUser = session?.user || null;
-  if (currentUser) {
-    const inv = await getUserInventory(currentUser.id);
-    userInventory = inv.map(item => item.item_id);
-    console.log('[Auth] Logged in:', currentUser.email || 'Unknown', 'Items:', userInventory);
-    updateSelectUI();
-  }
-  _updateAuthUI();
-
-  // Listen to auth events (especially for Forgot Password / Recovery)
+function initAuth() {
+  // Đăng ký listener ngay lập tức trước khi có bất kỳ hàm await nào
+  // để đảm bảo bắt được sự kiện PASSWORD_RECOVERY từ URL hash
   supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log('[Auth] Event:', event);
     if (event === 'PASSWORD_RECOVERY') {
       authUI.showChangePassword();
     } else {
@@ -512,11 +504,23 @@ async function initAuth() {
       if (currentUser) {
         const inv = await getUserInventory(currentUser.id);
         userInventory = inv.map(item => item.item_id);
+        console.log('[Auth] Logged in:', currentUser.email, 'Items:', userInventory);
         updateSelectUI();
       } else {
         userInventory = [];
         updateSelectUI();
       }
+      _updateAuthUI();
+    }
+  });
+
+  // Vẫn gọi getSession để đảm bảo trạng thái ban đầu nếu onAuthStateChange không bắt được INITIAL_SESSION
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    if (session && !currentUser && !window.location.hash.includes('type=recovery')) {
+      currentUser = session.user;
+      const inv = await getUserInventory(currentUser.id);
+      userInventory = inv.map(item => item.item_id);
+      updateSelectUI();
       _updateAuthUI();
     }
   });
