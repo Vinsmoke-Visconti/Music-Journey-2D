@@ -466,16 +466,10 @@ export class PixelEditor {
     const WCOLS=this.wheelGrid[0]?.length??24, WROWS=this.wheelGrid.length;
     const BW=BCOLS*BPIX, BH=BROWS*BPIX, WR=(WCOLS*WPIX)/2;
     const cx=PW/2, groundY=PH-18;
-    // Draw body
-    const bx=cx-BW/2, by=groundY-BH+this.bodyYOff*BPIX;
-    for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++){
-      const v=this.bodyGrid[r]?.[c]??0; if(!v)continue;
-      ctx.fillStyle=numToCSS(v); ctx.fillRect(bx+c*BPIX,by+r*BPIX,BPIX,BPIX);
-    }
     // Draw ground line
     ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(0,groundY); ctx.lineTo(PW,groundY); ctx.stroke();
-    // Draw wheels
+    // Draw wheels first (layer sau)
     const wy=groundY-WR+this.wheelYOff*WPIX;
     for(const wxOff of [this.wheelDist,-this.wheelDist]){
       const wox=cx+wxOff-WR, woy=wy-WR;
@@ -483,6 +477,12 @@ export class PixelEditor {
         const v=this.wheelGrid[r]?.[c]??0; if(!v)continue;
         ctx.fillStyle=numToCSS(v); ctx.fillRect(wox+c*WPIX,woy+r*WPIX,WPIX,WPIX);
       }
+    }
+    // Draw body on top (layer trước)
+    const bx=cx-BW/2, by=groundY-BH+this.bodyYOff*BPIX;
+    for(let r=0;r<BROWS;r++) for(let c=0;c<BCOLS;c++){
+      const v=this.bodyGrid[r]?.[c]??0; if(!v)continue;
+      ctx.fillStyle=numToCSS(v); ctx.fillRect(bx+c*BPIX,by+r*BPIX,BPIX,BPIX);
     }
   }
 
